@@ -49,7 +49,7 @@ Mycroft.Delegate {
                 wrapMode: Text.WordWrap
                 anchors.centerIn: parent
                 font.bold: true
-                text: "Select Backend"
+                text: "Configure Your STT Engine"
                 color: "#ff0000"
             }
         }
@@ -65,17 +65,12 @@ Mycroft.Delegate {
                 anchors.fill: parent
                 spacing: Kirigami.Units.smallSpacing
                 
-                TextField {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3
-                }
-                
                 Label {
                     id: warnText
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     font.pixelSize: width * 0.05
-                    text: "A backend provides services used by Mycroft Core to manage devices, skills and settings. Select the backend type you would like to use with your OVOS Install."
+                    text: "Speech-To-Text (STT) is the process of converting audio of spoken words into strings of text. Select and configure Online or On-Device engines"
                 }
                 
                 Item {
@@ -100,11 +95,11 @@ Mycroft.Delegate {
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
                         level: 3
-                        text: "Mycroft Backend"
+                        text: "Google STT"
                     }
                         
                     onClicked: {
-                        triggerGuiEvent("mycroft.device.set.backend", {"backend": "default"})
+                        triggerGuiEvent("mycroft.device.confirm.stt", {"engine": "google"})
                     }
                 }
                 
@@ -124,13 +119,13 @@ Mycroft.Delegate {
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
+                        enabled: false
                         level: 3
-                        text: "Local Backend"
+                        text: "Kaldi STT (Disabled)"
                     }
                     
                     onClicked: {
-                        triggerGuiEvent("mycroft.device.set.backend",
-                        {"backend": "local"})
+                        triggerGuiEvent("mycroft.device.stt.notworking", {})
                     }
                 }
             }
