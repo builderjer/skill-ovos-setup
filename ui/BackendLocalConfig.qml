@@ -99,7 +99,8 @@ Mycroft.Delegate {
                     }
                         
                     onClicked: {
-                        triggerGuiEvent("mycroft.device.confirm.stt", {"engine": "google"})
+                        triggerGuiEvent("mycroft.device.set.stt",
+                        {"engine": "google"})
                     }
                 }
                 
@@ -124,7 +125,7 @@ Mycroft.Delegate {
                     }
                     
                     onClicked: {
-                        triggerGuiEvent("mycroft.device.confirm.stt",
+                        triggerGuiEvent("mycroft.device.set.stt",
                         {"engine": "kaldi"})
                     }
                 }
