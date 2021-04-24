@@ -47,7 +47,7 @@ Mycroft.Delegate {
             Layout.alignment: horizontalMode ? Qt.AlignVCenter : Qt.AlignTop
 
             ColumnLayout {
-                Layout.preferredWidth: horizontalMode ? parent.width / 2 : parent.width
+                Layout.preferredWidth: horizontalMode ? parent.width / 1.5 : parent.width
                 Layout.preferredHeight: horizontalMode ? parent.height : parent.height / 2
                 Layout.alignment: horizontalMode ? Qt.AlignVCenter : Qt.AlignTop
 
@@ -58,7 +58,7 @@ Mycroft.Delegate {
                     wrapMode: Text.WordWrap
                     elide: Text.ElideRight
                     font.weight: Font.Bold
-                    font.pixelSize: horizontalMode ? root.width * 0.06 : root.height * 0.05
+                    font.pixelSize: horizontalMode ? root.width * 0.05 : root.height * 0.05
                     color: "white"
                     text: "Pair this device at <font color=\'#FF0000\'>" + root.backendurl + "</font>"
                 }
@@ -69,7 +69,7 @@ Mycroft.Delegate {
                     wrapMode: Text.WordWrap
                     elide: Text.ElideRight
                     font.weight: Font.Bold
-                    font.pixelSize: horizontalMode ? root.width * 0.06 : root.height * 0.05
+                    font.pixelSize: horizontalMode ? root.width * 0.05 : root.height * 0.05
                     color: "white"
                     text: "Enter the code <font color=\'#FF0000\'>" + root.code + "</font>"
                 }
