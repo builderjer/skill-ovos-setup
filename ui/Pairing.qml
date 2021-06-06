@@ -22,16 +22,17 @@ import org.kde.kirigami 2.4 as Kirigami
 
 import Mycroft 1.0 as Mycroft
 
-Mycroft.Delegate {
+Item {
     id: root
     property var code: sessionData.code
     property var txtcolor: sessionData.txtcolor
     property var backendurl: sessionData.backendurl
-    leftPadding: 0
-    rightPadding: 0
-    bottomPadding: 0
-    topPadding: 0
-    skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
+//     leftPadding: 0
+//     rightPadding: 0
+//     bottomPadding: 0
+//     topPadding: 0
+//     skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
+    anchors.fill: parent
     property bool horizontalMode: root.width > root.height ? 1 :0
 
     Rectangle {

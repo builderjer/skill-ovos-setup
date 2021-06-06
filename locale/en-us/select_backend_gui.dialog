@@ -1,0 +1,1 @@
+Open voice OS supports multiple backends, The backend provides services used by mycroft core to manage your device, you can choose to pair with the mycroft backend or run locally, select an option on the screen to learn more about the backend

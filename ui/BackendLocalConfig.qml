@@ -22,71 +22,65 @@ import org.kde.kirigami 2.5 as Kirigami
 import org.kde.plasma.core 2.0 as PlasmaCore
 import Mycroft 1.0 as Mycroft
 
-Mycroft.Delegate {
+Item {
     id: backendView
     anchors.fill: parent
-    leftPadding: 0
-    rightPadding: 0
-    topPadding: 0
-    bottomPadding: 0
+    property bool horizontalMode: backendView.width > backendView.height ? 1 :0
 
     Rectangle {
-        color: "#000000"
+        color: Qt.rgba(0, 0, 0, 1)
         anchors.fill: parent
-    
-        Item {
-            id: topArea
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.leftMargin: Kirigami.Units.largeSpacing
-            anchors.rightMargin: Kirigami.Units.largeSpacing
-            height: Kirigami.Units.gridUnit * 2
-            
-            Kirigami.Heading {
-                id: brightnessSettingPageTextHeading
-                level: 1
-                wrapMode: Text.WordWrap
-                anchors.centerIn: parent
-                font.bold: true
-                text: "Configure Your STT Engine"
-                color: "#ff0000"
-            }
-        }
+        anchors.margins: Mycroft.Units.gridUnit * 2
 
-        Item {
-            anchors.top: topArea.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: Kirigami.Units.largeSpacing
-            
+        GridLayout {
+            anchors.fill: parent
+            z: 1
+            columns: horizontalMode ? 2 : 1
+            columnSpacing: Kirigami.Units.largeSpacing
+            Layout.alignment: horizontalMode ? Qt.AlignVCenter : Qt.AlignTop
+
             ColumnLayout {
-                anchors.fill: parent
-                spacing: Kirigami.Units.smallSpacing
-                
+                Layout.maximumWidth: horizontalMode ? parent.width / 2 : parent.width
+                Layout.preferredHeight: horizontalMode ? parent.height : parent.height / 2
+                Layout.alignment: horizontalMode ? Qt.AlignVCenter : Qt.AlignTop
+
+                Label {
+                    id: configureSttEngineText
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    font.bold: true
+                    font.pixelSize: backendView.width * 0.05
+                    color: "#ff0000"
+                    text: "Configure Your STT Engine"
+                }
+
                 Label {
                     id: warnText
                     Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignTop
                     wrapMode: Text.WordWrap
-                    font.pixelSize: width * 0.05
-                    text: "Speech-To-Text (STT) is the process of converting audio of spoken words into strings of text. Select and configure Online or On-Device engines"
+                    font.pixelSize: backendView.width * 0.04
+                    color: "white"
+                    text: "Speech-To-Text (STT) is the process of converting audio of spoken words into strings of text"
                 }
-                
-                Item {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.largeSpacing
-                }
-                                
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
                 Button {
                     id: bt1
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    
+
                     background: Rectangle {
-                        color: bt1.down ? "#14415E" : "#34a4eb"
+                        color: bt1.down ? "#14415E" : "#34a4fc"
+                        border.width: 6
+                        border.color: Qt.darker("#34a4fc", 1.2)
+                        radius: 10
                     }
-                    
+
                     contentItem: Kirigami.Heading {
                         width: parent.width
                         height: parent.height
@@ -97,21 +91,24 @@ Mycroft.Delegate {
                         level: 3
                         text: "Google STT"
                     }
-                        
+
                     onClicked: {
                         triggerGuiEvent("mycroft.device.confirm.stt", {"engine": "google"})
                     }
                 }
-                
+
                 Button {
                     id: bt2
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    
+
                     background: Rectangle {
-                        color: bt2.down ? "#BC4729" : "#eb5934"
+                        color: bt2.down ? "#BC4729" : "#ee5534"
+                        border.width: 6
+                        border.color: Qt.darker("#ee5534", 1.2)
+                        radius: 10
                     }
-                    
+
                     contentItem: Kirigami.Heading {
                         width: parent.width
                         height: parent.height
@@ -122,7 +119,7 @@ Mycroft.Delegate {
                         level: 3
                         text: "Kaldi STT"
                     }
-                    
+
                     onClicked: {
                         triggerGuiEvent("mycroft.device.confirm.stt",
                         {"engine": "kaldi"})

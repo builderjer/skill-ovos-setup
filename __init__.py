@@ -28,6 +28,7 @@ import mycroft.audio
 
 from ovos_utils.configuration import update_mycroft_config
 from ovos_utils.skills import blacklist_skill, make_priority_skill
+from ovos_utils.system import system_reboot
 from ovos_workshop.skills.decorators import killable_intent, killable_event
 from ovos_workshop.skills import OVOSSkill
 from ovos_local_backend.configuration import CONFIGURATION
@@ -53,9 +54,7 @@ class PairingSkill(OVOSSkill):
         self.nato_dict = None
         self.mycroft_ready = False
         self.num_failed_codes = 0
-        self.pairing_process_state = 0
 
-        self.in_pairing = False
         # specific vendors can override this
         if "pairing_url" not in self.settings:
             self.settings["pairing_url"] = "home.mycroft.ai"
@@ -63,13 +62,8 @@ class PairingSkill(OVOSSkill):
             self.settings["color"] = "#FF0000"
 
         self.initial_stt = self.config_core["stt"]["module"]
-        self.in_confirmation = False
-        self.selection_done = False
-        self.confirm_selection_done = False
-        self.confirm_stt_selection_done = False
-        self.confirmation_counter = 0
         self.using_mock = self.config_core["server"][
-                              "url"] != "https://api.mycroft.ai"
+            "url"] != "https://api.mycroft.ai"
 
     # startup
     def initialize(self):
@@ -110,7 +104,9 @@ class PairingSkill(OVOSSkill):
 
         # show loading screen once wifi setup ends
         if not connected():
-            self.bus.once("ovos.wifi.setup.completed", self.show_loading_screen)
+            self.bus.once(
+                "ovos.wifi.setup.completed",
+                self.show_loading_screen)
         elif paired:
             # show loading screen right away
             # device has been paired and there is internet,
@@ -120,7 +116,7 @@ class PairingSkill(OVOSSkill):
             self.show_loading_screen()
 
     def show_loading_screen(self, message=None):
-        self.gui.show_page("LoadingScreen.qml", override_animations=True)
+        self.handle_display_manager("LoadingScreen")
 
     def send_stop_signal(self, stop_event=None, should_sleep=True):
         # stop the previous event execution
@@ -134,11 +130,8 @@ class PairingSkill(OVOSSkill):
             self.bus.emit(Message('mycroft.mic.mute'))
             sleep(0.5)  # if TTS had not yet started
             self.bus.emit(Message("mycroft.audio.speech.stop"))
-            sleep(1.5)  # the silence from muting should make STT stop recording
+            sleep(1.5)
             self.bus.emit(Message('mycroft.mic.unmute'))
-
-    def handle_intent_aborted(self):
-        self.log.info("killing all dialogs")
 
     def not_paired(self, message):
         if not message.data.get('quiet', True):
@@ -149,29 +142,19 @@ class PairingSkill(OVOSSkill):
         """Catch info that skills are loaded and ready."""
         self.mycroft_ready = True
         self.reload_skill = True
-        self.gui.remove_page("InstallingSkills.qml")
-        #don't do a full release because of bug with using self.gui.clear() in self.gui.release()
-        #self.gui.release()
-        #call mycroft.gui.screen.close directly over messagebus
+        self.gui.remove_page("ProcessLoader.qml")
         self.bus.emit(Message("mycroft.gui.screen.close",
                               {"skill_id": self.skill_id}))
-        #Tell OVOS-GUI to finally collect resting screens
-        self.bus.emit(Message("ovos.pairing.set.backend", {"backend": "mycroft"}))
+        # Tell OVOS-GUI to finally collect resting screens
+        self.bus.emit(
+            Message(
+                "ovos.pairing.set.backend", {
+                    "backend": "mycroft"}))
         self.bus.emit(Message("ovos.pairing.process.completed"))
-
-    # voice events
-    def converse(self, utterances, lang=None):
-        if self.in_pairing:
-            # capture all utterances until paired
-            # prompts from this skill are handled with get_response
-            return True
-        return False
 
     @intent_handler(IntentBuilder("PairingIntent")
                     .require("PairingKeyword").require("DeviceKeyword"))
     def handle_pairing(self, message=None):
-        self.in_pairing = True
-
         if self.initial_stt == "mycroft":
             # STT not available, temporarily set chromium plugin
             self.change_to_plugin()
@@ -183,8 +166,7 @@ class PairingSkill(OVOSSkill):
             # Already paired! Just tell user
             self.speak_dialog("already.paired")
         elif not self.data:
-            self.pairing_process_state = 1
-            self.in_confirmation = True
+            self.log.info("Being Called Here")
             self.handle_backend_menu()
 
     # config handling
@@ -210,7 +192,16 @@ class PairingSkill(OVOSSkill):
             time.sleep(5)  # allow STT to reload
 
     def change_to_kaldi(self):
-        self.log.info("not implemented")
+        config = {
+            "stt": {
+                "module": "vosk_streaming_stt_plug",
+                "vosk_streaming_stt_plug": {
+                    "model": "http://alphacephei.com/.....zip"
+                }
+            }
+        }
+        update_mycroft_config(config)
+        self.bus.emit(Message("configuration.patch", {"config": config}))
 
     def enable_selene(self):
         self.change_to_default()
@@ -248,102 +239,47 @@ class PairingSkill(OVOSSkill):
         self.using_mock = True
         self.bus.emit(Message("configuration.patch", {"config": config}))
 
-    # Pairing GUI events
-    #### Backend selection menu
-    @killable_event(msg="pairing.backend.menu.stop")
-    def handle_backend_menu(self, wait=0):
-        self.gui.show_page("BackendSelect.qml", override_idle=True,
-                           override_animations=True)
-        self.send_stop_signal("pairing.confirmation.stop")
-        sleep(int(wait))
-        self.speak_dialog("select_backend", wait=True)
-        self.speak_dialog("backend", wait=True)
-        sleep(1)
-        answer = self.get_response("choose_backend", num_retries=0)
-        if answer:
-            self.log.info("ANSWER: " + answer)
-            if self.voc_match(answer, "no_backend"):
-                self.bus.emit(Message("mycroft.device.set.backend",
-                                      {"backend": "local"}))
-                return
-            elif self.voc_match(answer, "backend"):
-                self.bus.emit(Message("mycroft.device.set.backend",
-                                      {"backend": "selene"}))
-                return
-            else:
-                self.speak_dialog("no_understand", wait=True)
+    def handle_display_manager(self, state):
+        self.gui["state"] = state
+        self.gui.show_page(
+            "ProcessLoader.qml",
+            override_idle=True,
+            override_animations=True)
 
-        sleep(1)  # time for abort to kick in
-        # (answer will be None and return before this is killed)
-        self.handle_backend_menu(wait=15)
+    # Pairing GUI events
+    # Backend selection menu
+    def handle_backend_menu(self):
+        self.handle_display_manager("BackendSelect")
+        self.speak_dialog("select_backend_gui")
 
     def handle_backend_selected_event(self, message):
-        self.send_stop_signal("pairing.backend.menu.stop", should_sleep=False)
-        self.in_confirmation = False
-        self.confirmation_counter = 0
-        self.selection_done = True
-        self.pairing_process_state = 2
+        self.bus.emit(Message("mycroft.audio.speech.stop"))
+        time.sleep(2)
         self.handle_backend_confirmation(message.data["backend"])
 
     def handle_return_event(self, message):
-        self.send_stop_signal("pairing.confirmation.stop", should_sleep=False)
-        page = message.data["page"]
-        self.in_confirmation = False
-        self.selection_done = False
-        self.confirmation_counter = 0
+        page = message.data.get("page", "")
         if page == "selene":
-            self.gui.remove_page("BackendMycroft.qml")
-        else:
-            self.gui.remove_page("BackendLocal.qml")
-        self.handle_backend_menu()
+            self.bus.emit(Message("mycroft.audio.speech.stop"))
+            time.sleep(1)
+            self.handle_backend_menu()
 
-    ### Backend confirmation
-    @killable_event(msg="pairing.confirmation.stop",
-                    callback=handle_intent_aborted)
+        else:
+            self.bus.emit(Message("mycroft.audio.speech.stop"))
+            time.sleep(1)
+            self.handle_backend_menu()
+
+    # Backend confirmation
     def handle_backend_confirmation(self, selection):
-        self.log.info("SELECTED: " + selection)
-        self.gui.remove_page("BackendSelect.qml")
-        if selection == "local":
-            self.gui.show_page("BackendLocal.qml", override_idle=True,
-                               override_animations=True)
-        else:
-            self.gui.show_page("BackendMycroft.qml", override_idle=True,
-                               override_animations=True)
-
         if selection == "selene":
-            self.speak_dialog("selected_mycroft_backend", wait=True)
-            # NOTE response might be None
-            answer = self.ask_yesno("confirm_backend",
-                                      {"backend": "mycroft"})
-            if answer == "yes":
-                self.bus.emit(Message("mycroft.device.confirm.backend",
-                                      {"backend": "selene"}))
-                return
-            elif answer == "no":
-                self.bus.emit(Message("mycroft.return.select.backend",
-                                      {"page": "local"}))
-                return
+            self.handle_display_manager("BackendMycroft")
+            self.speak_dialog("selected_mycroft_backend_gui")
+
         elif selection == "local":
-            self.speak_dialog("selected_local_backend", wait=True)
-            # NOTE response might be None
-            answer = self.ask_yesno("confirm_backend",
-                                      {"backend": "local"})
-            if answer == "yes":
-                self.bus.emit(Message("mycroft.device.confirm.backend",
-                                      {"backend": "local"}))
-                return
-            if answer == "no":
-                self.bus.emit(Message("mycroft.return.select.backend",
-                                      {"page": "selene"}))
-                return
-        sleep(5)  # time for abort to kick in
-        # (answer will be None and return before this is killed)
-        self.handle_backend_confirmation(selection)
+            self.handle_display_manager("BackendLocal")
+            self.speak_dialog("selected_local_backend_gui")
 
     def handle_backend_confirmation_event(self, message):
-        self.send_stop_signal("pairing.confirmation.stop")
-        self.in_confirmation = False
-        self.confirmation_counter = 0
         if message.data["backend"] == "local":
             self.select_local()
         else:
@@ -351,9 +287,6 @@ class PairingSkill(OVOSSkill):
 
     def select_selene(self):
         # selene selected
-
-        self.gui.remove_page("BackendMycroft.qml")
-        self.confirmation_counter = 0
         if self.using_mock:
             self.enable_selene()
             self.data = None
@@ -364,34 +297,20 @@ class PairingSkill(OVOSSkill):
         if check_remote_pairing(ignore_errors=True):
             # Already paired! Just tell user
             self.speak_dialog("already.paired")
-            self.in_pairing = False
         elif not self.data:
             # continue to normal pairing process
             self.kickoff_pairing()
 
     def select_local(self, message=None):
         # mock backend selected
-
         self.data = None
         self.handle_stt_menu()
 
-    ### STT selection
-    @killable_event(msg="pairing.stt.menu.stop",
-                    callback=handle_intent_aborted)
+    # STT selection
     def handle_stt_menu(self):
-        self.gui.remove_page("BackendLocal.qml")
-        self.gui.show_page("BackendLocalConfig.qml", override_idle=True,
-                           override_animations=True)
+        self.handle_display_manager("BackendLocalConfig")
         self.send_stop_signal("pairing.confirmation.stop")
-
-        self.speak_dialog("select_mycroft_stt")
-        if self.ask_yesno("confirm_stt", {"stt": "google"}) == "yes":
-            self.select_stt(selection="google")
-        elif self.ask_yesno("confirm_stt", {"stt": "kaldi"}) == "yes":
-            self.select_stt(selection="kaldi")
-        else:
-            self.speak_dialog("choice-failed")
-            self.handle_stt_menu()
+        self.speak_dialog("select_mycroft_stt_gui")
 
     def select_stt(self, selection=None):
         self.send_stop_signal("pairing.stt.menu.stop")
@@ -399,15 +318,15 @@ class PairingSkill(OVOSSkill):
             self.change_to_plugin()
         elif selection == "kaldi":
             self.change_to_kaldi()
-        self.confirmation_counter = 0
-        self.gui.remove_page("BackendLocalConfig.qml")
-        self.gui.show_page("BackendLocalRestart.qml", override_idle=True,
-                           override_animations=True)
-        self.bus.emit(Message("ovos.pairing.set.backend", {"backend": "local"}))
+        self.handle_display_manager("BackendLocalRestart")
+        self.bus.emit(
+            Message(
+                "ovos.pairing.set.backend", {
+                    "backend": "local"}))
         if not self.using_mock:
             self.enable_mock()
-        # TODO restart
-        self.in_pairing = False
+        time.sleep(5)
+        system_reboot()
 
     # pairing
     def kickoff_pairing(self):
@@ -545,7 +464,6 @@ class PairingSkill(OVOSSkill):
 
         self.data = None
         self.count = -1
-        self.in_pairing = False
 
     def abort_and_restart(self, quiet=False):
         # restart pairing sequence
@@ -587,40 +505,42 @@ class PairingSkill(OVOSSkill):
         # Make sure code stays on display
         self.enclosure.deactivate_mouth_events()
         self.enclosure.mouth_text(self.settings["pairing_url"] + "      ")
-        self.gui.show_page("pairing_start.qml", override_idle=True,
-                           override_animations=True)
+        self.handle_display_manager("PairingStart")
+        # self.gui.show_page("pairing_start.qml", override_idle=True,
+        # override_animations=True)
 
     def show_pairing(self, code):
-        self.gui.remove_page("pairing_start.qml")
+        # self.gui.remove_page("pairing_start.qml")
         self.enclosure.deactivate_mouth_events()
         self.enclosure.mouth_text(code)
         self.gui["txtcolor"] = self.settings["color"]
         self.gui["backendurl"] = self.settings["pairing_url"]
         self.gui["code"] = code
-        self.gui.show_page("pairing.qml", override_idle=True,
-                           override_animations=True)
+        self.handle_display_manager("Pairing")
+        # self.gui.show_page("pairing.qml", override_idle=True,
+        # override_animations=True)
 
     def show_pairing_success(self):
         self.enclosure.activate_mouth_events()  # clears the display
-        self.gui.remove_page("pairing.qml")
+        # self.gui.remove_page("pairing.qml")
         self.gui["status"] = "Success"
         self.gui["label"] = "Device Paired"
         self.gui["bgColor"] = "#40DBB0"
-        self.gui.show_page("status.qml", override_idle=True,
-                           override_animations=True)
+        # self.gui.show_page("status.qml", override_idle=True,
+        # override_animations=True)
+        self.handle_display_manager("Status")
         # allow GUI to linger around for a bit
         sleep(5)
-        self.gui.remove_page("status.qml")
-        self.gui.show_page("InstallingSkills.qml", override_idle=True, override_animations=True)
+        # self.gui.remove_page("status.qml")
+        self.handle_display_manager("InstallingSkills")
 
     def show_pairing_fail(self):
         self.gui.release()
         self.gui["status"] = "Failed"
         self.gui["label"] = "Pairing Failed"
         self.gui["bgColor"] = "#FF0000"
-        self.gui.show_page("status.qml", override_animations=True)
+        self.handle_display_manager("Status")
         sleep(5)
-        self.gui.remove_page("status.qml")
 
     def shutdown(self):
         with self.activator_lock:

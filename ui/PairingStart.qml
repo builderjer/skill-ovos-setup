@@ -23,13 +23,14 @@ import org.kde.kirigami 2.4 as Kirigami
 import Mycroft 1.0 as Mycroft
 import org.kde.lottie 1.0
 
-Mycroft.Delegate {
+Item {
     id: root
-    leftPadding: 0
-    rightPadding: 0
-    bottomPadding: 0
-    topPadding: 0
-    skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
+    anchors.fill: parent
+//     leftPadding: 0
+//     rightPadding: 0
+//     bottomPadding: 0
+//     topPadding: 0
+//     skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
     
     Rectangle {
         color: "#000000"
