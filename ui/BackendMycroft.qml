@@ -22,14 +22,14 @@ import org.kde.kirigami 2.5 as Kirigami
 import org.kde.plasma.core 2.0 as PlasmaCore
 import Mycroft 1.0 as Mycroft
 
-Mycroft.Delegate {
+Item {
     id: backendView
     anchors.fill: parent
-    leftPadding: 0
-    rightPadding: 0
-    topPadding: 0
-    bottomPadding: 0
-    skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
+//     leftPadding: 0
+//     rightPadding: 0
+//     topPadding: 0
+//     bottomPadding: 0
+//     skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
     property bool horizontalMode: root.width > root.height ? 1 :0
 
     ListModel {

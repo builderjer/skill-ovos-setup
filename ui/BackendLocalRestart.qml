@@ -6,12 +6,12 @@ import org.kde.kirigami 2.4 as Kirigami
 import Mycroft 1.0 as Mycroft
 import org.kde.lottie 1.0
 
-Mycroft.Delegate {
+Item {
     id: root
-    leftPadding: 0
-    rightPadding: 0
-    topPadding: 0
-    bottomPadding: 0
+//     leftPadding: 0
+//     rightPadding: 0
+//     topPadding: 0
+//     bottomPadding: 0
     
     Rectangle {
         anchors.fill: parent

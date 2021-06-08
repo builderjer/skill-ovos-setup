@@ -22,14 +22,14 @@ import org.kde.kirigami 2.5 as Kirigami
 import org.kde.plasma.core 2.0 as PlasmaCore
 import Mycroft 1.0 as Mycroft
 
-Mycroft.Delegate {
+Item {
     id: backendView
     anchors.fill: parent
-    leftPadding: 0
-    rightPadding: 0
-    topPadding: 0
-    bottomPadding: 0
-    skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
+//     leftPadding: 0
+//     rightPadding: 0
+//     topPadding: 0
+//     bottomPadding: 0
+//     skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
     property bool horizontalMode: backendView.width > backendView.height ? 1 :0
 
     Rectangle {
@@ -80,7 +80,9 @@ Mycroft.Delegate {
                     Layout.fillHeight: true
 
                     background: Rectangle {
-                        color: bt1.down ? "#14415E" : "#22a7f0"
+                        color: bt1.down ? "#14415E" : "#34a4fc"
+                        border.width: 6
+                        border.color: Qt.darker("#34a4fc", 1.2)
                         radius: 10
                     }
 
@@ -107,7 +109,9 @@ Mycroft.Delegate {
                     Layout.fillHeight: true
 
                     background: Rectangle {
-                        color: bt2.down ? "#BC4729" : "#eb4934"
+                        color: bt2.down ? "#BC4729" : "#ee5534"
+                        border.width: 6
+                        border.color: Qt.darker("#ee5534", 1.2)
                         radius: 10
                     }
 
