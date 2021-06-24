@@ -22,16 +22,12 @@ import org.kde.kirigami 2.4 as Kirigami
 
 import Mycroft 1.0 as Mycroft
 
-Item {
+Mycroft.Delegate {
     id: root
     property var code: sessionData.code
     property var txtcolor: sessionData.txtcolor
     property var backendurl: sessionData.backendurl
-//     leftPadding: 0
-//     rightPadding: 0
-//     bottomPadding: 0
-//     topPadding: 0
-//     skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
+    skillBackgroundColorOverlay: "#000000"
     anchors.fill: parent
     property bool horizontalMode: root.width > root.height ? 1 :0
 
@@ -43,7 +39,7 @@ Item {
         GridLayout {
             id: colLay
             anchors.fill: parent
-            columns: horizontalMode ? 2 : 1
+            columns: horizontalMode ? 1 : 1
             columnSpacing: Kirigami.Units.largeSpacing
             Layout.alignment: horizontalMode ? Qt.AlignVCenter : Qt.AlignTop
 
@@ -59,32 +55,23 @@ Item {
                     wrapMode: Text.WordWrap
                     elide: Text.ElideRight
                     font.weight: Font.Bold
-                    font.pixelSize: horizontalMode ? root.width * 0.05 : root.height * 0.05
+                    font.pixelSize: horizontalMode ? root.width * 0.08 : root.height * 0.05
+                    horizontalAlignment: Text.AlignHCenter
                     color: "white"
                     text: "Pair this device at <font color=\'#FF0000\'>" + root.backendurl + "</font>"
                 }
 
                 Kirigami.Heading {
                     Layout.fillWidth: true
-                    Layout.alignment: horizontalMode ? Qt.AlignVCenter | Qt.AlignLeft : Qt.AlignTop | Qt.AlignLeft
+                    Layout.alignment: Qt.AlignTop
+                    horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     elide: Text.ElideRight
                     font.weight: Font.Bold
-                    font.pixelSize: horizontalMode ? root.width * 0.05 : root.height * 0.05
-                    color: "white"
-                    text: "Enter the code <font color=\'#FF0000\'>" + root.code + "</font>"
+                    font.pixelSize: horizontalMode ? root.width * 0.12 : root.height * 0.05
+                    color: "#FF0000"
+                    text: root.code
                 }
-            }
-
-            Image {
-                id: img
-                source: Qt.resolvedUrl("phone.png")
-                fillMode: Image.PreserveAspectFit
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.leftMargin: Kirigami.Units.largeSpacing
-                Layout.rightMargin: Kirigami.Units.largeSpacing
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
             }
         }
     }
