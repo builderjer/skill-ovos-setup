@@ -22,12 +22,11 @@ import org.kde.kirigami 2.4 as Kirigami
 
 import Mycroft 1.0 as Mycroft
 
-Mycroft.Delegate {
+Item {
     id: root
     property var code: sessionData.code
     property var txtcolor: sessionData.txtcolor
     property var backendurl: sessionData.backendurl
-    skillBackgroundColorOverlay: "#000000"
     anchors.fill: parent
     property bool horizontalMode: root.width > root.height ? 1 :0
 
