@@ -141,7 +141,6 @@ class PairingSkill(OVOSSkill):
     def handle_mycroft_ready(self, message):
         """Catch info that skills are loaded and ready."""
         self.mycroft_ready = True
-        self.reload_skill = True
         self.gui.remove_page("ProcessLoader.qml")
         self.bus.emit(Message("mycroft.gui.screen.close",
                               {"skill_id": self.skill_id}))
@@ -339,7 +338,6 @@ class PairingSkill(OVOSSkill):
                 return
             # Not paired or already pairing, so start the process.
             self.count = 0
-        self.reload_skill = False  # Prevent restart during the process
 
         self.log.debug("Kicking off pairing sequence")
 
@@ -430,8 +428,6 @@ class PairingSkill(OVOSSkill):
             # Send signal to update configuration
             self.bus.emit(Message("configuration.updated"))
 
-            # Allow this skill to auto-update again
-            self.reload_skill = True
         except HTTPError:
             # speak pairing code every 60th second
             with self.counter_lock:
