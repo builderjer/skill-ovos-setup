@@ -168,7 +168,7 @@ class PairingSkill(OVOSSkill):
 
         if self.initial_stt == "mycroft":
             # STT not available, temporarily set chromium plugin
-            self.change_to_plugin()
+            self.change_to_chromium()
 
         if self.using_mock:
             # user triggered intent, wants to enable pairing
@@ -190,7 +190,7 @@ class PairingSkill(OVOSSkill):
             }
             self.bus.emit(Message("configuration.patch", {"config": config}))
 
-    def change_to_plugin(self):
+    def change_to_chromium(self):
         if self.initial_stt != "chromium_stt_plug":
             self.log.info("Temporarily setting chromium plugin (free STT)")
             config = {
@@ -266,7 +266,6 @@ class PairingSkill(OVOSSkill):
 
     def handle_backend_selected_event(self, message):
         self.send_stop_signal("pairing.backend.menu.stop", should_sleep=False)
-        time.sleep(2)
         self.handle_backend_confirmation(message.data["backend"])
 
     def handle_return_event(self, message):
@@ -326,7 +325,7 @@ class PairingSkill(OVOSSkill):
     def select_stt(self, selection=None):
         self.send_stop_signal("pairing.stt.menu.stop")
         if selection == "google":
-            self.change_to_plugin()
+            self.change_to_chromium()
         elif selection == "kaldi":
             self.change_to_kaldi()
         self.handle_display_manager("BackendLocalRestart")
