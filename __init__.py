@@ -55,6 +55,7 @@ class PairingSkill(OVOSSkill):
         self.mycroft_ready = False
         self.num_failed_codes = 0
 
+        self.in_pairing = False
         # specific vendors can override this
         if "pairing_url" not in self.settings:
             self.settings["pairing_url"] = "home.mycroft.ai"
@@ -63,7 +64,7 @@ class PairingSkill(OVOSSkill):
 
         self.initial_stt = self.config_core["stt"]["module"]
         self.using_mock = self.config_core["server"][
-            "url"] != "https://api.mycroft.ai"
+                              "url"] != "https://api.mycroft.ai"
 
     # startup
     def initialize(self):
@@ -94,6 +95,7 @@ class PairingSkill(OVOSSkill):
             # This assumes that the pairing skill is loaded as a priority skill
             # before the rest of the skills are loaded.
             self.add_event("mycroft.ready", self.handle_mycroft_ready)
+            self.in_pairing = True
 
         # make priority skill if needed
         make_priority_skill(self.skill_id)
@@ -104,9 +106,8 @@ class PairingSkill(OVOSSkill):
 
         # show loading screen once wifi setup ends
         if not connected():
-            self.bus.once(
-                "ovos.wifi.setup.completed",
-                self.show_loading_screen)
+            self.bus.once("ovos.wifi.setup.completed",
+                          self.show_loading_screen)
         elif paired:
             # show loading screen right away
             # device has been paired and there is internet,
@@ -119,6 +120,7 @@ class PairingSkill(OVOSSkill):
         self.handle_display_manager("LoadingScreen")
 
     def send_stop_signal(self, stop_event=None, should_sleep=True):
+        # TODO move this one into default OVOSkill class
         # stop the previous event execution
         if stop_event:
             self.bus.emit(Message(stop_event))
@@ -130,8 +132,11 @@ class PairingSkill(OVOSSkill):
             self.bus.emit(Message('mycroft.mic.mute'))
             sleep(0.5)  # if TTS had not yet started
             self.bus.emit(Message("mycroft.audio.speech.stop"))
-            sleep(1.5)
+            sleep(1.5)  # the silence from muting should make STT stop recording
             self.bus.emit(Message('mycroft.mic.unmute'))
+
+    def handle_intent_aborted(self):
+        self.log.info("killing all dialogs")
 
     def not_paired(self, message):
         if not message.data.get('quiet', True):
@@ -145,15 +150,22 @@ class PairingSkill(OVOSSkill):
         self.bus.emit(Message("mycroft.gui.screen.close",
                               {"skill_id": self.skill_id}))
         # Tell OVOS-GUI to finally collect resting screens
-        self.bus.emit(
-            Message(
-                "ovos.pairing.set.backend", {
-                    "backend": "mycroft"}))
+        self.bus.emit(Message("ovos.pairing.set.backend", {"backend": "mycroft"}))
         self.bus.emit(Message("ovos.pairing.process.completed"))
+
+    # voice events
+    def converse(self, utterances, lang=None):
+        if self.in_pairing:
+            # capture all utterances until paired
+            # prompts from this skill are handled with get_response
+            return True
+        return False
 
     @intent_handler(IntentBuilder("PairingIntent")
                     .require("PairingKeyword").require("DeviceKeyword"))
     def handle_pairing(self, message=None):
+        self.in_pairing = True
+
         if self.initial_stt == "mycroft":
             # STT not available, temporarily set chromium plugin
             self.change_to_plugin()
@@ -165,7 +177,6 @@ class PairingSkill(OVOSSkill):
             # Already paired! Just tell user
             self.speak_dialog("already.paired")
         elif not self.data:
-            self.log.info("Being Called Here")
             self.handle_backend_menu()
 
     # config handling
@@ -246,29 +257,26 @@ class PairingSkill(OVOSSkill):
             override_animations=True)
 
     # Pairing GUI events
-    # Backend selection menu
+    #### Backend selection menu
+    @killable_event(msg="pairing.backend.menu.stop")
     def handle_backend_menu(self):
+        self.send_stop_signal("pairing.confirmation.stop")
         self.handle_display_manager("BackendSelect")
         self.speak_dialog("select_backend_gui")
 
     def handle_backend_selected_event(self, message):
-        self.bus.emit(Message("mycroft.audio.speech.stop"))
+        self.send_stop_signal("pairing.backend.menu.stop", should_sleep=False)
         time.sleep(2)
         self.handle_backend_confirmation(message.data["backend"])
 
     def handle_return_event(self, message):
+        self.send_stop_signal("pairing.confirmation.stop", should_sleep=False)
         page = message.data.get("page", "")
-        if page == "selene":
-            self.bus.emit(Message("mycroft.audio.speech.stop"))
-            time.sleep(1)
-            self.handle_backend_menu()
+        self.handle_backend_menu()
 
-        else:
-            self.bus.emit(Message("mycroft.audio.speech.stop"))
-            time.sleep(1)
-            self.handle_backend_menu()
-
-    # Backend confirmation
+    ### Backend confirmation
+    @killable_event(msg="pairing.confirmation.stop",
+                    callback=handle_intent_aborted)
     def handle_backend_confirmation(self, selection):
         if selection == "selene":
             self.handle_display_manager("BackendMycroft")
@@ -279,6 +287,7 @@ class PairingSkill(OVOSSkill):
             self.speak_dialog("selected_local_backend_gui")
 
     def handle_backend_confirmation_event(self, message):
+        self.send_stop_signal("pairing.confirmation.stop")
         if message.data["backend"] == "local":
             self.select_local()
         else:
@@ -296,6 +305,7 @@ class PairingSkill(OVOSSkill):
         if check_remote_pairing(ignore_errors=True):
             # Already paired! Just tell user
             self.speak_dialog("already.paired")
+            self.in_pairing = False
         elif not self.data:
             # continue to normal pairing process
             self.kickoff_pairing()
@@ -305,7 +315,9 @@ class PairingSkill(OVOSSkill):
         self.data = None
         self.handle_stt_menu()
 
-    # STT selection
+    ### STT selection
+    @killable_event(msg="pairing.stt.menu.stop",
+                    callback=handle_intent_aborted)
     def handle_stt_menu(self):
         self.handle_display_manager("BackendLocalConfig")
         self.send_stop_signal("pairing.confirmation.stop")
@@ -318,12 +330,11 @@ class PairingSkill(OVOSSkill):
         elif selection == "kaldi":
             self.change_to_kaldi()
         self.handle_display_manager("BackendLocalRestart")
-        self.bus.emit(
-            Message(
-                "ovos.pairing.set.backend", {
-                    "backend": "local"}))
+        self.bus.emit(Message("ovos.pairing.set.backend", {"backend": "local"}))
         if not self.using_mock:
             self.enable_mock()
+
+        self.in_pairing = False
         time.sleep(5)
         system_reboot()
 
@@ -417,8 +428,6 @@ class PairingSkill(OVOSSkill):
             if self.mycroft_ready:
                 # Tell user they are now paired
                 self.speak_dialog("pairing.paired", wait=True)
-            else:
-                self.speak_dialog("wait.for.startup", wait=True)
 
             # Un-mute.  Would have been muted during onboarding for a new
             # unit, and not dangerous to do if pairing was started
@@ -460,6 +469,7 @@ class PairingSkill(OVOSSkill):
 
         self.data = None
         self.count = -1
+        self.in_pairing = False
 
     def abort_and_restart(self, quiet=False):
         # restart pairing sequence
