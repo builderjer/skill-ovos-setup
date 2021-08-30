@@ -169,21 +169,8 @@ class PairingSkill(OVOSSkill):
             self.handle_backend_menu()
 
     # config handling
-    def change_to_default(self):
-        # TODO can we run vosk with limited keyword mode instead ?
-        # using google by default is a big no no
-        if self.initial_stt != "ovos-stt-plugin-chromium":
-            self.log.info("restoring STT configuration")
-            conf = LocalConf(USER_CONFIG)
-            conf["stt"] = {
-                "module": self.initial_stt
-            }
-            conf.store()
-            self.bus.emit(Message("configuration.patch", {"config": conf}))
-
     def change_to_chromium(self):
         if self.initial_stt != "ovos-stt-plugin-chromium":
-            self.log.info("Temporarily setting chromium plugin (free STT)")
             conf = LocalConf(USER_CONFIG)
             conf["stt"] = {
                 "module": "ovos-stt-plugin-chromium"
@@ -202,7 +189,6 @@ class PairingSkill(OVOSSkill):
         time.sleep(5)  # allow STT to reload
 
     def enable_selene(self):
-        self.change_to_default()
         config = {
             "stt": {"module": "mycroft"},
             "server": {
@@ -241,13 +227,6 @@ class PairingSkill(OVOSSkill):
         conf.store()
         self.using_mock = True
         self.bus.emit(Message("configuration.patch", {"config": config}))
-
-    def handle_display_manager(self, state):
-        self.gui["state"] = state
-        self.gui.show_page(
-            "ProcessLoader.qml",
-            override_idle=True,
-            override_animations=True)
 
     # Pairing GUI events
     #### Backend selection menu
@@ -510,6 +489,13 @@ class PairingSkill(OVOSSkill):
         self.speak_dialog("pairing.code", data)
 
     # GUI
+    def handle_display_manager(self, state):
+        self.gui["state"] = state
+        self.gui.show_page(
+            "ProcessLoader.qml",
+            override_idle=True,
+            override_animations=True)
+
     def show_pairing_start(self):
         # Make sure code stays on display
         self.enclosure.deactivate_mouth_events()
