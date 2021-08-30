@@ -204,6 +204,7 @@ class PairingSkill(OVOSSkill):
     def enable_selene(self):
         self.change_to_default()
         config = {
+            "stt": {"module": "mycroft"},
             "server": {
                 "url": "https://api.mycroft.ai",
                 "version": "v1"
