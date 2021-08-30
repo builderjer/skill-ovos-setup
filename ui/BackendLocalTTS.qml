@@ -51,7 +51,7 @@ Item {
                     font.bold: true
                     font.pixelSize: backendView.width * 0.05
                     color: "#ff0000"
-                    text: "Configure Your STT Engine"
+                    text: "Configure Your TTS Engine"
                 }
 
                 Label {
@@ -61,7 +61,7 @@ Item {
                     wrapMode: Text.WordWrap
                     font.pixelSize: backendView.width * 0.04
                     color: "white"
-                    text: "Speech-To-Text (STT) is the process of converting audio of spoken words into strings of text"
+                    text: "Text-To-Speech (TTS) is the process of converting strings of text into audio of spoken words"
                 }
             }
 
@@ -89,11 +89,11 @@ Item {
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
                         level: 3
-                        text: "Google STT"
+                        text: "Mimic2 (online)"
                     }
 
                     onClicked: {
-                        triggerGuiEvent("mycroft.device.confirm.stt", {"engine": "google"})
+                        triggerGuiEvent("mycroft.device.confirm.tts", {"engine": "mimic2"})
                     }
                 }
 
@@ -117,12 +117,11 @@ Item {
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
                         level: 3
-                        text: "Kaldi STT"
+                        text: "Mimic (offline)"
                     }
 
                     onClicked: {
-                        triggerGuiEvent("mycroft.device.confirm.stt",
-                        {"engine": "kaldi"})
+                        triggerGuiEvent("mycroft.device.confirm.tts", {"engine": "mimic"})
                     }
                 }
             }

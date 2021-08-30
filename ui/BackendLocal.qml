@@ -38,13 +38,13 @@ Item {
             text: "No Pairing Required"
         }
         ListElement {
-            text: "Configurable STT Options: Google | Kaldi STT"
+            text: "Configurable STT Options: Google | Vosk"
         }
         ListElement {
-            text: "Set Custom Wolfram Alpha Key"
+            text: "Configurable TTS Options: Mimic2 | Mimic"
         }
         ListElement {
-            text: "Set Custom Open Weather Map Key"
+            text: "Set your own API Keys"
         }
     }
 

@@ -10,8 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import subprocess
 import time
+from os.path import expanduser
 from threading import Timer, Lock
 from time import sleep
 from uuid import uuid4
@@ -25,6 +25,7 @@ from mycroft.messagebus.message import Message
 from mycroft.skills.core import intent_handler
 from mycroft.util import connected
 from ovos_local_backend.configuration import CONFIGURATION
+from ovos_local_backend.utils.geolocate import ip_geolocate
 from ovos_utils.system import system_reboot
 from ovos_workshop.skills import OVOSSkill
 from ovos_workshop.skills.decorators import killable_event
@@ -65,9 +66,7 @@ class PairingSkill(OVOSSkill):
 
     # startup
     def initialize(self):
-        paired = is_paired()
-
-        if not paired:
+        if not is_paired():
             # If the device isn't paired catch mycroft.ready to report
             # that the device is ready for use.
             # This assumes that the pairing skill is loaded as a priority skill
@@ -80,23 +79,14 @@ class PairingSkill(OVOSSkill):
         if not connected():
             self.bus.once("ovos.wifi.setup.completed",
                           self.show_loading_screen)
-        elif paired:
-            # show loading screen right away
-            # device has been paired and there is internet,
-            # this is a priority skill which means mycroft is still loading
-            # when this is called
-            # NOTE this should be the first priority skill
+        else:
+            # this is usually the first skill to load
+            # ASSUMPTION: is the first skill in priority list
             self.show_loading_screen()
 
         self.add_event("mycroft.not.paired", self.not_paired)
-        self.add_event("mycroft.device.set.backend",
-                       self.handle_backend_selected_event)
-        self.add_event("mycroft.device.confirm.backend",
-                       self.handle_backend_confirmation_event)
-        self.add_event("mycroft.return.select.backend",
-                       self.handle_return_event)
-        self.add_event("mycroft.device.confirm.stt", self.select_stt)
-        # duplicate events for GUI interaction
+
+        # events for GUI interaction
         self.gui.register_handler("mycroft.device.set.backend",
                                   self.handle_backend_selected_event)
         self.gui.register_handler("mycroft.device.confirm.backend",
@@ -105,6 +95,8 @@ class PairingSkill(OVOSSkill):
                                   self.handle_return_event)
         self.gui.register_handler("mycroft.device.confirm.stt",
                                   self.select_stt)
+        self.gui.register_handler("mycroft.device.confirm.tts",
+                                  self.select_tts)
         self.nato_dict = self.translate_namedvalues('codes')
 
     def show_loading_screen(self, message=None):
@@ -142,8 +134,6 @@ class PairingSkill(OVOSSkill):
         self.bus.emit(Message("mycroft.gui.screen.close",
                               {"skill_id": self.skill_id}))
         # Tell OVOS-GUI to finally collect resting screens
-        self.bus.emit(
-            Message("ovos.pairing.set.backend", {"backend": "mycroft"}))
         self.bus.emit(Message("ovos.pairing.process.completed"))
 
     # voice events
@@ -169,24 +159,44 @@ class PairingSkill(OVOSSkill):
             self.handle_backend_menu()
 
     # config handling
-    def change_to_chromium(self):
-        if self.initial_stt != "ovos-stt-plugin-chromium":
-            conf = LocalConf(USER_CONFIG)
-            conf["stt"] = {
-                "module": "ovos-stt-plugin-chromium"
+    def change_to_mimic(self):
+        conf = LocalConf(USER_CONFIG)
+        conf["tts"] = {
+            "module": "mimic",
+            "mimic": {
+                "voice": "ap",
             }
-            conf.store()
-            self.bus.emit(Message("configuration.patch", {"config": conf}))
-            time.sleep(5)  # allow STT to reload
+        }
+        conf.store()
+        self.bus.emit(Message("configuration.patch", {"config": conf}))
+
+    def change_to_mimic2(self):
+        conf = LocalConf(USER_CONFIG)
+        conf["tts"] = {
+            "module": "mimic2"
+        }
+        conf.store()
+        self.bus.emit(Message("configuration.patch", {"config": conf}))
+
+    def change_to_chromium(self):
+        conf = LocalConf(USER_CONFIG)
+        conf["stt"] = {
+            "module": "ovos-stt-plugin-chromium"
+        }
+        conf.store()
+        self.bus.emit(Message("configuration.patch", {"config": conf}))
 
     def change_to_kaldi(self):
         conf = LocalConf(USER_CONFIG)
         conf["stt"] = {
-            "module": "ovos-stt-plugin-vosk-streaming"
+            "module": "ovos-stt-plugin-vosk-streaming",
+            "ovos-stt-plugin-vosk-streaming": {
+                "model": expanduser(
+                    "~/.local/share/vosk/vosk-model-small-en-us-0.15")
+            }
         }
         conf.store()
         self.bus.emit(Message("configuration.patch", {"config": conf}))
-        time.sleep(5)  # allow STT to reload
 
     def enable_selene(self):
         config = {
@@ -215,6 +225,9 @@ class PairingSkill(OVOSSkill):
                 "url": url,
                 "version": version
             },
+            # no web ui to set location, best guess from ip address
+            # should get at least timezone right
+            "location": ip_geolocate("0.0.0.0"),
             "listener": {
                 "wake_word_upload": {
                     "url": "http://0.0.0.0:{p}/precise/upload".format(
@@ -290,7 +303,7 @@ class PairingSkill(OVOSSkill):
     @killable_event(msg="pairing.stt.menu.stop",
                     callback=handle_intent_aborted)
     def handle_stt_menu(self):
-        self.handle_display_manager("BackendLocalConfig")
+        self.handle_display_manager("BackendLocalSTT")
         self.send_stop_signal("pairing.confirmation.stop")
         self.speak_dialog("select_mycroft_stt_gui")
 
@@ -301,11 +314,9 @@ class PairingSkill(OVOSSkill):
             self.change_to_chromium()
         elif selection == "kaldi":
             self.change_to_kaldi()
-        self.handle_display_manager("BackendLocalRestart")
-        self.bus.emit(
-            Message("ovos.pairing.set.backend", {"backend": "local"}))
         if not self.using_mock:
             self.enable_mock()
+            # create pairing file with dummy data
             login = {"uuid": self.state,
                      "access":
                          "OVOSdbF1wJ4jA5lN6x6qmVk_QvJPqBQZTUJQm7fYzkDyY_Y=",
@@ -313,12 +324,28 @@ class PairingSkill(OVOSSkill):
                          "OVOS66c5SpAiSpXbpHlq9HNGl1vsw_srX49t5tCv88JkhuE=",
                      "expires_at": time.time() + 999999}
             IdentityManager.save(login)
+        self.handle_tts_menu()
+
+    ### TTS selection
+    @killable_event(msg="pairing.tts.menu.stop",
+                    callback=handle_intent_aborted)
+    def handle_tts_menu(self):
+        self.handle_display_manager("BackendLocalTTS")
+        self.send_stop_signal("pairing.stt.menu.stop")
+        self.speak_dialog("select_mycroft_tts_gui")
+
+    def select_tts(self, message):
+        selection = message.data["engine"]
+        self.send_stop_signal()
+        if selection == "mimic":
+            self.change_to_mimic()
+        elif selection == "mimic2":
+            self.change_to_mimic2()
+        self.handle_display_manager("BackendLocalRestart")
+
         self.in_pairing = False
         time.sleep(5)
-        try:
-            subprocess.call("sudo systemctl restart mycroft", shell=True)
-        except:
-            system_reboot()
+        system_reboot()
 
     # pairing
     def kickoff_pairing(self):
