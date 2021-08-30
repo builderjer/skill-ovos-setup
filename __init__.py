@@ -181,7 +181,9 @@ class PairingSkill(OVOSSkill):
 
     # config handling
     def change_to_default(self):
-        if self.initial_stt != "chromium_stt_plug":
+        # TODO can we run vosk with limited keyword mode instead ?
+        # using google by default is a big no no
+        if self.initial_stt != "ovos-stt-plugin-chromium":
             self.log.info("restoring STT configuration")
             config = {
                 "stt": {
@@ -191,11 +193,11 @@ class PairingSkill(OVOSSkill):
             self.bus.emit(Message("configuration.patch", {"config": config}))
 
     def change_to_chromium(self):
-        if self.initial_stt != "chromium_stt_plug":
+        if self.initial_stt != "ovos-stt-plugin-chromium":
             self.log.info("Temporarily setting chromium plugin (free STT)")
             config = {
                 "stt": {
-                    "module": "chromium_stt_plug"
+                    "module": "ovos-stt-plugin-chromium"
                 }
             }
             self.bus.emit(Message("configuration.patch", {"config": config}))
@@ -204,9 +206,9 @@ class PairingSkill(OVOSSkill):
     def change_to_kaldi(self):
         config = {
             "stt": {
-                "module": "vosk_streaming_stt_plug",
-                "vosk_streaming_stt_plug": {
-                    "model": "http://alphacephei.com/.....zip"
+                "module": "ovos-stt-plugin-vosk-streaming",
+                "ovos-stt-plugin-vosk-streaming": {
+                    "model": "http://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
                 }
             }
         }
