@@ -105,7 +105,7 @@ Item {
                     background: Rectangle {
                         color: bt4.down ? "#BC4729" : "#ee5534"
                         border.width: 6
-                        border.color: Qt.darker("#34a4fc", 1.2)
+                        border.color: Qt.darker("#ee5534", 1.2)
                         radius: 10
                     }
 
@@ -134,7 +134,7 @@ Item {
                     background: Rectangle {
                         color: bt1.down ? "#14415E" : "#34a4fc"
                         border.width: 6
-                        border.color: Qt.darker("#ee5534", 1.2)
+                        border.color: Qt.darker("#34a4fc", 1.2)
                         radius: 10
                     }
 
