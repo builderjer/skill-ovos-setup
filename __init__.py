@@ -371,9 +371,11 @@ class PairingSkill(OVOSSkill):
         self.in_pairing = False
         time.sleep(5)
 
-        subprocess.call("sudo systemctl restart mycroft-audio", shell=True)
-        subprocess.call("sudo systemctl restart mycroft-voice", shell=True)
-        subprocess.call("sudo systemctl restart mycroft-skills", shell=True)
+        system_reboot()
+        # TODO no need for full restart
+        #subprocess.call("sudo systemctl restart mycroft-audio", shell=True)
+        #subprocess.call("sudo systemctl restart mycroft-voice", shell=True)
+        #subprocess.call("sudo systemctl restart mycroft-skills", shell=True)
 
     # pairing
     def kickoff_pairing(self):
