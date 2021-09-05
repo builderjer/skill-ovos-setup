@@ -41,7 +41,7 @@ Item {
             text: "Configurable STT Options: Google | Vosk"
         }
         ListElement {
-            text: "Configurable TTS Options: Mimic2 | Mimic"
+            text: "Configurable TTS Options: Mimic2 | Mimic | Larynx | Pico"
         }
         ListElement {
             text: "Set your own API Keys"

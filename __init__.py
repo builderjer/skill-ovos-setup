@@ -15,7 +15,7 @@ from os.path import expanduser
 from threading import Timer, Lock
 from time import sleep
 from uuid import uuid4
-
+import subprocess
 import mycroft.audio
 from adapt.intent import IntentBuilder
 from mycroft.api import DeviceApi, is_paired, check_remote_pairing
@@ -137,7 +137,7 @@ class PairingSkill(OVOSSkill):
         self.bus.emit(Message("ovos.pairing.process.completed"))
 
     # voice events
-    def converse(self, utterances, lang=None):
+    def converse(self, message):
         if self.in_pairing:
             # capture all utterances until paired
             # prompts from this skill are handled with get_response
@@ -174,6 +174,27 @@ class PairingSkill(OVOSSkill):
         conf = LocalConf(USER_CONFIG)
         conf["tts"] = {
             "module": "mimic2"
+        }
+        conf.store()
+        self.bus.emit(Message("configuration.patch", {"config": conf}))
+
+    def change_to_larynx(self):
+        conf = LocalConf(USER_CONFIG)
+        conf["tts"] = {
+            "module": "neon-tts-plugin-larynx-server",
+            "neon-tts-plugin-larynx-server": {
+                "host": "http://tts.neon.ai",
+                "voice": "mary_ann",
+                "vocoder": "hifi_gan/vctk_small"
+            }
+        }
+        conf.store()
+        self.bus.emit(Message("configuration.patch", {"config": conf}))
+
+    def change_to_pico(self):
+        conf = LocalConf(USER_CONFIG)
+        conf["tts"] = {
+            "module": "ovos-tts-plugin-pico"
         }
         conf.store()
         self.bus.emit(Message("configuration.patch", {"config": conf}))
@@ -341,11 +362,18 @@ class PairingSkill(OVOSSkill):
             self.change_to_mimic()
         elif selection == "mimic2":
             self.change_to_mimic2()
+        elif selection == "pico":
+            self.change_to_pico()
+        elif selection == "larynx":
+            self.change_to_larynx()
         self.handle_display_manager("BackendLocalRestart")
 
         self.in_pairing = False
         time.sleep(5)
-        system_reboot()
+
+        subprocess.call("sudo systemctl restart mycroft-audio", shell=True)
+        subprocess.call("sudo systemctl restart mycroft-voice", shell=True)
+        subprocess.call("sudo systemctl restart mycroft-skills", shell=True)
 
     # pairing
     def kickoff_pairing(self):
