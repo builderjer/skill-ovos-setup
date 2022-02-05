@@ -54,11 +54,6 @@ class PairingSkill(OVOSSkill):
         self.num_failed_codes = 0
 
         self.in_pairing = False
-        # specific vendors can override this
-        if "pairing_url" not in self.settings:
-            self.settings["pairing_url"] = "home.mycroft.ai"
-        if "color" not in self.settings:
-            self.settings["color"] = "#FF0000"
 
         self.initial_stt = self.config_core["stt"]["module"]
         self.using_mock = self.config_core["server"][
@@ -66,6 +61,12 @@ class PairingSkill(OVOSSkill):
 
     # startup
     def initialize(self):
+        # specific distros can override this
+        if "pairing_url" not in self.settings:
+            self.settings["pairing_url"] = "home.mycroft.ai"
+        if "color" not in self.settings:
+            self.settings["color"] = "#FF0000"
+
         if not is_paired():
             # If the device isn't paired catch mycroft.ready to report
             # that the device is ready for use.
