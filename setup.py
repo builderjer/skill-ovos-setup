@@ -12,7 +12,7 @@ setup(
     name='ovos-skill-setup',
     version='0.0.1',
     description='OVOS setup skill plugin',
-    url='https://github.com/builderjer/skill-ovos-setup@c8ba85db7dd3b00e2a0d79fc5c447fd7180fd2ee',
+    url='https://github.com/builderjer/skill-ovos-setup@custom/setup.py',
     author='builderjer',
     author_email='builderjer@gmail.com',
     license='Apache-2.0',
