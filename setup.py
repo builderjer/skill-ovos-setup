@@ -24,7 +24,7 @@ setup(
                       "ovos-local-backend",
                       "ovos-stt-plugin-chromium",
                       "ovos_workshop>=0.0.5a1",
-                      "ovos-stt-plugin-vosk-streaming",
+                      "ovos-stt-plugin-vosk",
                       "ovos-tts-plugin-mimic",
                       "ovos-tts-plugin-mimic2"],
     keywords='ovos skill plugin',
