@@ -93,6 +93,8 @@ class PairingSkill(OVOSSkill):
         # trigger initial pairing
         if not is_paired():
             self.bus.emit(Message("mycroft.not.paired"))
+        else:
+            self.update_device_attributes_on_backend()
 
     def show_loading_screen(self, message=None):
         self.handle_display_manager("LoadingScreen")
@@ -363,6 +365,19 @@ class PairingSkill(OVOSSkill):
         self.bus.emit(Message("system.reboot"))
 
     # selene pairing
+    def update_device_attributes_on_backend(self):
+        """Communicate version information to the backend.
+
+        The backend tracks core version, enclosure version, platform build
+        and platform name for each device, if it is known.
+        """
+        self.log.info('Sending updated device attributes to the backend...')
+        try:
+            api = DeviceApi()
+            api.update_version()
+        except Exception:
+            pass
+
     def kickoff_pairing(self):
         # Kick off pairing...
         with self.counter_lock:
@@ -460,6 +475,8 @@ class PairingSkill(OVOSSkill):
 
             # Send signal to update configuration
             self.bus.emit(Message("configuration.updated"))
+
+            self.update_device_attributes_on_backend()
 
         except HTTPError:
             # speak pairing code every 60th second
