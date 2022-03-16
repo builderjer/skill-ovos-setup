@@ -22,11 +22,11 @@ from mycroft.configuration import LocalConf, USER_CONFIG
 from mycroft.identity import IdentityManager
 from mycroft.messagebus.message import Message
 from mycroft.skills.core import intent_handler
-from mycroft.util import connected
 from ovos_local_backend.configuration import CONFIGURATION
 from ovos_workshop.skills import OVOSSkill
 from ovos_workshop.skills.decorators import killable_event
 from requests import HTTPError
+from ovos_utils.network_utils import is_connected
 
 
 class PairingSkill(OVOSSkill):
@@ -63,23 +63,6 @@ class PairingSkill(OVOSSkill):
         if "color" not in self.settings:
             self.settings["color"] = "#FF0000"
 
-        if not is_paired():
-            # If the device isn't paired catch mycroft.ready to report
-            # that the device is ready for use.
-            # This assumes that the pairing skill is loaded as a priority skill
-            # before the rest of the skills are loaded.
-            self.add_event("mycroft.ready", self.handle_mycroft_ready)
-            self.in_pairing = True
-            self.make_active()  # to enable converse
-
-        # show loading screen once wifi setup ends
-        if not connected():
-            self.bus.once("ovos.wifi.setup.completed", self.show_loading_screen)
-        else:
-            # this is usually the first skill to load
-            # ASSUMPTION: is the first skill in priority list
-            self.show_loading_screen()
-
         self.add_event("mycroft.not.paired", self.not_paired)
 
         # events for GUI interaction
@@ -90,14 +73,31 @@ class PairingSkill(OVOSSkill):
         self.gui.register_handler("mycroft.device.confirm.tts", self.select_tts)
         self.nato_dict = self.translate_namedvalues('codes')
 
-        # trigger initial pairing
+        # ASSUMPTION: pairing is the first skill in priority list -> first to load
+        # we can take over the GUI during boot sequence
+        wifi = is_connected()
+        if wifi:
+            # if we have internet then there is no wifi gui displayed
+            self.show_loading_screen()
+
         if not is_paired():
-            self.bus.emit(Message("mycroft.not.paired"))
+            self.make_active()  # to enable converse
+            if wifi:
+                # trigger pairing
+                self.bus.emit(Message("mycroft.not.paired"))
+            else:
+                # trigger pairing after wifi
+                self.bus.once("ovos.wifi.setup.completed", self.handle_wifi_finish)
         else:
             self.update_device_attributes_on_backend()
 
     def show_loading_screen(self, message=None):
         self.handle_display_manager("LoadingScreen")
+
+    def handle_wifi_finish(self, message):
+        self.show_loading_screen()
+        if not is_paired():
+            self.bus.emit(message.forward("mycroft.not.paired"))
 
     def send_stop_signal(self, stop_event=None, should_sleep=True):
         # TODO move this one into default OVOSkill class
@@ -119,6 +119,8 @@ class PairingSkill(OVOSSkill):
         self.log.info("killing all dialogs")
 
     def not_paired(self, message):
+        # If the device isn't paired catch mycroft.ready to release gui
+        self.bus.once("mycroft.ready", self.handle_mycroft_ready)
         if not message.data.get('quiet', True):
             self.speak_dialog("pairing.not.paired")
         self.handle_pairing()
@@ -126,9 +128,11 @@ class PairingSkill(OVOSSkill):
     def handle_mycroft_ready(self, message):
         """Catch info that skills are loaded and ready."""
         self.mycroft_ready = True
-        self.gui.remove_page("ProcessLoader.qml")
-        self.bus.emit(Message("mycroft.gui.screen.close",
-                              {"skill_id": self.skill_id}))
+        # if using selene close the gui, otherwise wait for device reboot
+        if not self.using_mock:
+            self.gui.remove_page("ProcessLoader.qml")
+            self.bus.emit(Message("mycroft.gui.screen.close",
+                                  {"skill_id": self.skill_id}))
 
     # voice events
     def converse(self, message):
