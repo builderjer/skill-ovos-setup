@@ -1,7 +1,7 @@
 import QtQuick.Layouts 1.12
 import QtQuick 2.12
 import QtQuick.Controls 2.12
-import org.kde.kirigami 2.1 as Kirigami
+import org.kde.kirigami 2.10 as Kirigami
 import Mycroft 1.0 as Mycroft
 
 Mycroft.Delegate {
@@ -10,7 +10,10 @@ Mycroft.Delegate {
     rightPadding: 0
     topPadding: 0
     bottomPadding: 0
-    skillBackgroundColorOverlay: Kirigami.Theme.backgroundColor
+    background: Rectangle {
+        color: Kirigami.Theme.backgroundColor
+        z: -1
+    }
 
     property var pageToLoad: sessionData.state
 
