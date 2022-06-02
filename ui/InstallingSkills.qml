@@ -1,23 +1,18 @@
 import QtQuick.Layouts 1.4
 import QtQuick 2.4
 import QtQuick.Controls 2.0
-import org.kde.kirigami 2.4 as Kirigami
+import org.kde.kirigami 2.10 as Kirigami
 
 import Mycroft 1.0 as Mycroft
 import org.kde.lottie 1.0
 
 Item {
     id: root
-//     leftPadding: 0
-//     rightPadding: 0
-//     topPadding: 0
-//     bottomPadding: 0
-//    skillBackgroundColorOverlay: Qt.rgba(0, 0, 0, 1)
     
     Rectangle {
         anchors.fill: parent
         anchors.margins: Mycroft.Units.gridUnit * 2
-        color: "#000000"
+        color: Kirigami.Theme.backgroundColor
         
         ColumnLayout {
             id: grid
@@ -33,7 +28,7 @@ Item {
                 font.family: "Noto Sans Display"
                 font.styleName: "Black"
                 text: "Setting Up"
-                color: "white"
+                color: Kirigami.Theme.textColor
             }
             
             Label {
@@ -45,7 +40,7 @@ Item {
                 font.family: "Noto Sans Display"
                 font.styleName: "Black"
                 text: "Default Skills"
-                color: "#ff0000"
+                color: Kirigami.Theme.highlightColor
             }
 
             LottieAnimation {
