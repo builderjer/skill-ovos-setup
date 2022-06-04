@@ -65,7 +65,7 @@ Item {
                 anchors.centerIn: parent
                 font.bold: true
                 font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                text: "Local Backend"
+                text: "No Backend"
                 color: Kirigami.Theme.highlightColor
             }
         }
@@ -88,7 +88,7 @@ Item {
                     color: Kirigami.Theme.textColor
                     wrapMode: Text.WordWrap
                     font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                    text: "For personal usage and allows you to run offline"
+                    text: "Allows your device to work offline"
                 }
 
                 Item {

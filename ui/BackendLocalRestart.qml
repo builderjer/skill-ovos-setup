@@ -66,7 +66,7 @@ Item {
                     font.pixelSize: width * 0.040
                     wrapMode: Text.WordWrap
                     color: Kirigami.Theme.textColor
-                    text: "Device will reboot to complete configuring the device"
+                    text: "Wrapping up device configuration..."
                 }
             }
 

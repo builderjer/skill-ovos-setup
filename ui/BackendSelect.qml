@@ -145,7 +145,7 @@ Item {
                             fontSizeMode: horizontalMode ? Text.HorizontalFit : Text.VerticalFit
                             minimumPixelSize: 8
                             font.pixelSize: 32
-                            text: "Local Backend"
+                            text: "No Backend"
                         }
 
                         onClicked: {
