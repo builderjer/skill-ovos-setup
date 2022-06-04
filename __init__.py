@@ -325,6 +325,11 @@ class PairingSkill(OVOSSkill):
             # continue to normal pairing process
             self.kickoff_pairing()
 
+        # signal skill manager that basic setup is complete
+        # this will kick in the pairing check before mycroft.ready
+        sleep(0.5)  # buffer time to allow configs to reload and detect selene
+        self.bus.emit(Message('mycroft.setup.complete'))
+
     def select_local(self, message=None):
         # mock backend selected
         self.data = None
@@ -385,10 +390,9 @@ class PairingSkill(OVOSSkill):
         IdentityManager.save(login)
 
         self.in_pairing = False
-        time.sleep(5)  # allow the reboot animation for a bit
-        # TODO do we really need to restart?
-        #  where in core is the backend change not accounted for?
-        self.bus.emit(Message("system.reboot"))
+        # signal skill manager that basic setup is complete
+        sleep(0.5)  # buffer time to allow configs to reload
+        self.bus.emit(Message('mycroft.setup.complete'))
 
     # selene pairing
     def update_device_attributes_on_backend(self):
