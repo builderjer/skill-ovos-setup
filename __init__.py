@@ -53,11 +53,15 @@ class PairingSkill(OVOSSkill):
         self.in_pairing = False
         self.selected_stt = None
         self.selected_tts = None
-        self.selected_backend = ""
 
     @property
-    def using_mock(self):
-        return self.config_core["server"]["url"] != "https://api.mycroft.ai"
+    def selected_backend(self):
+        return self.settings.get("selected_backend")
+
+    @selected_backend.setter
+    def selected_backend(self, value):
+        self.settings["selected_backend"] = value
+        self.settings.store()
 
     # startup
     def initialize(self):
@@ -77,16 +81,9 @@ class PairingSkill(OVOSSkill):
         self.gui.register_handler("mycroft.device.confirm.tts", self.select_tts)
         self.nato_dict = self.translate_namedvalues('codes')
 
-        # ASSUMPTION: pairing is the first skill in priority list -> first to load
-        # we can take over the GUI during boot sequence
-        wifi = is_connected()
-        if wifi:
-            # if we have internet then there is no wifi gui displayed
-            self.show_loading_screen()
-
         if not is_paired():
             self.make_active()  # to enable converse
-            if wifi:
+            if is_connected():
                 # trigger pairing
                 self.bus.emit(Message("mycroft.not.paired"))
             else:
@@ -94,6 +91,10 @@ class PairingSkill(OVOSSkill):
                 self.bus.once("ovos.wifi.setup.completed", self.handle_wifi_finish)
         else:
             self.update_device_attributes_on_backend()
+            if self.selected_backend is not None:
+                # if initial setup was previously finished
+                # tell skill manager to not wait anymore
+                self.bus.emit(Message('mycroft.setup.complete'))
 
     def show_loading_screen(self, message=None):
         self.handle_display_manager("LoadingScreen")
@@ -132,9 +133,6 @@ class PairingSkill(OVOSSkill):
     def handle_mycroft_ready(self, message):
         """Catch info that skills are loaded and ready."""
         self.mycroft_ready = True
-        # if using local backend wait for device reboot
-        if self.selected_backend == "local":
-            return
         # clear gui, either the pairing page or the initial loading page
         self.gui.remove_page("ProcessLoader.qml")
         self.bus.emit(Message("mycroft.gui.screen.close",
