@@ -22,9 +22,8 @@ from mycroft.configuration import LocalConf, USER_CONFIG
 from mycroft.identity import IdentityManager
 from mycroft.messagebus.message import Message
 from mycroft.skills.core import intent_handler
-from ovos_local_backend.configuration import CONFIGURATION
 from ovos_workshop.skills import OVOSSkill
-from ovos_workshop.skills.decorators import killable_event
+from ovos_workshop.decorators import killable_event
 from requests import HTTPError
 from ovos_utils.network_utils import is_connected
 from ovos_utils.gui import can_use_local_gui
@@ -158,7 +157,7 @@ class PairingSkill(OVOSSkill):
             # TODO add a voice only interface for pairing
             # auto pair with local backend
             self.change_to_vosk()
-            self.change_to_mimic2()
+            self.change_to_mimic()
             self.change_to_local_backend()
             self.finalize_local_setup()
             return
@@ -178,7 +177,8 @@ class PairingSkill(OVOSSkill):
             conf = LocalConf(USER_CONFIG)
             conf.merge(config)
             conf.store()
-            self.bus.emit(Message("configuration.patch", {"config": conf}))
+            self.bus.emit(Message("configuration.patch",
+                                  {"config": conf}))
 
     def change_to_mimic(self):
         self.update_user_config({
@@ -219,12 +219,14 @@ class PairingSkill(OVOSSkill):
     def change_to_chromium(self):
         self.update_user_config({
             "stt": {
-                "module": "ovos-stt-plugin-chromium",
+                "module": "ovos-stt-plugin-server",
                 "fallback_module": "ovos-stt-plugin-vosk",
                 # vosk model path not set, small model for lang auto downloaded to XDG directory
                 # en-us already bundled in OVOS image
                 "ovos-stt-plugin-vosk": {},
-                "ovos-stt-plugin-chromium": {}
+                "ovos-stt-plugin-server": {
+                    "url": "https://stt.openvoiceos.com/stt"
+                }
             }
         })
 
@@ -245,7 +247,8 @@ class PairingSkill(OVOSSkill):
             "stt": {"module": "mycroft"},
             "server": {
                 "url": "https://api.mycroft.ai",
-                "version": "v1"
+                "version": "v1",
+                "disabled": False
             },
             "listener": {
                 "wake_word_upload": {
@@ -257,17 +260,9 @@ class PairingSkill(OVOSSkill):
         self.selected_backend = "selene"
 
     def change_to_local_backend(self):
-        url = f"http://0.0.0.0:{CONFIGURATION['backend_port']}"
-        version = CONFIGURATION["api_version"]
         config = {
             "server": {
-                "url": url,
-                "version": version
-            },
-            "listener": {
-                "wake_word_upload": {
-                    "url": f"{url}/precise/upload"
-                }
+                "disabled": True
             }
         }
         self.update_user_config(config)
