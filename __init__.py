@@ -26,7 +26,7 @@ from ovos_workshop.skills import OVOSSkill
 from ovos_workshop.decorators import killable_event
 from requests import HTTPError
 from ovos_utils.network_utils import is_connected
-from ovos_utils.gui import can_use_local_gui
+from ovos_utils.gui import can_use_gui
 
 from enum import Enum
 
@@ -51,7 +51,7 @@ class PairingSkill(OVOSSkill):
         self.api = DeviceApi()
         self.data = None
         self.time_code_expires = None
-        self.state = str(uuid4())
+        self.uuid = str(uuid4())
         self.activator = None
         self.activator_lock = Lock()
         self.activator_cancelled = False
@@ -84,22 +84,25 @@ class PairingSkill(OVOSSkill):
         self.gui.register_handler("mycroft.device.confirm.tts", self.select_tts)
         self.nato_dict = self.translate_namedvalues('codes')
 
+        # uncomment this line for debugging
+        # will always trigger setup on boot
+        # self.selected_backend = None
+
         if not self.selected_backend:
             self.state = SetupState.FIRST_BOOT
+            self.make_active()  # to enable converse
+            self.bus.emit(Message("mycroft.not.paired"))
+        elif not is_connected():
+            self.state = SetupState.SELECTING_WIFI
+            # trigger pairing after wifi
+            self.bus.once("ovos.wifi.setup.completed",
+                          self.handle_wifi_finish)
+        elif not is_paired():
+            # trigger pairing
+            self.state = SetupState.SELECTING_BACKEND
+            self.bus.emit(Message("mycroft.not.paired"))
         else:
             self.state = SetupState.INACTIVE
-
-        if not is_paired():
-            self.make_active()  # to enable converse
-            if is_connected():
-                # trigger pairing
-                self.state = SetupState.SELECTING_BACKEND
-                self.bus.emit(Message("mycroft.not.paired"))
-            else:
-                self.state = SetupState.SELECTING_WIFI
-                # trigger pairing after wifi
-                self.bus.once("ovos.wifi.setup.completed", self.handle_wifi_finish)
-        else:
             self.update_device_attributes_on_backend()
 
     @property
@@ -163,6 +166,7 @@ class PairingSkill(OVOSSkill):
         self.log.info("killing all dialogs")
 
     def not_paired(self, message):
+        self.make_active()  # to enable converse
         # If the device isn't paired catch mycroft.ready to release gui
         self.bus.once("mycroft.ready", self.handle_mycroft_ready)
         if not message.data.get('quiet', True):
@@ -192,22 +196,21 @@ class PairingSkill(OVOSSkill):
     def handle_pairing(self, message=None):
         self.state = SetupState.SELECTING_BACKEND
 
-        if not can_use_local_gui():
+        if not can_use_gui():
             # TODO add a voice only interface for pairing
-            # auto pair with local backend
-            self.change_to_vosk()
-            self.change_to_mimic()
+            # configure offline default values
+            # self.change_to_vosk()
+            # self.change_to_mimic()
             self.change_to_local_backend()
-            self.finalize_local_setup()
             self.state = SetupState.INACTIVE
             return
 
-        if self.using_mock:
-            # user triggered intent, wants to enable pairing
-            self.select_selene()
-        elif check_remote_pairing(ignore_errors=True):
-            # Already paired! Just tell user
-            self.speak_dialog("already.paired")
+        if self.selected_backend and check_remote_pairing(ignore_errors=True):
+            # Already paired!
+            if message:  # intent
+                self.speak_dialog("already.paired")
+            self.state = SetupState.INACTIVE
+            self.show_pairing_success()
         elif not self.data:
             self.handle_backend_menu()
 
@@ -307,6 +310,7 @@ class PairingSkill(OVOSSkill):
         }
         self.update_user_config(config)
         self.selected_backend = "local"
+        self.create_dummy_identity()
 
     # Pairing GUI events
     #### Backend selection menu
@@ -346,20 +350,9 @@ class PairingSkill(OVOSSkill):
 
     def select_selene(self):
         # selene selected
-        if self.using_mock:
-            self.change_to_selene()
-            self.data = None
-            # TODO needs to restart, user wants to change back to selene
-            # eg, local was selected and at some point user said
-            # "pair my device"
-
-        if check_remote_pairing(ignore_errors=True):
-            # Already paired! Just tell user
-            self.speak_dialog("already.paired")
-            self.state = SetupState.INACTIVE
-        elif not self.data:
-            # continue to normal pairing process
-            self.kickoff_pairing()
+        self.change_to_selene()
+        # continue to normal pairing process
+        self.kickoff_pairing()
 
     def select_local(self, message=None):
         # mock backend selected
@@ -392,7 +385,7 @@ class PairingSkill(OVOSSkill):
     def select_tts(self, message):
         self.selected_tts = message.data["engine"]
         self.send_stop_signal()
-        self.handle_display_manager("BackendLocalRestart")
+        self.handle_display_manager("LoadingSkills")
         self.finalize_local_setup()
 
     ## Local backend
@@ -415,17 +408,16 @@ class PairingSkill(OVOSSkill):
 
         # set backend
         self.change_to_local_backend()
+
+        self.state = SetupState.INACTIVE
+
+    def create_dummy_identity(self):
         # create pairing file with dummy data
-        login = {"uuid": self.state,
+        login = {"uuid": self.uuid,
                  "access": "OVOSdbF1wJ4jA5lN6x6qmVk_QvJPqBQZTUJQm7fYzkDyY_Y=",
                  "refresh": "OVOS66c5SpAiSpXbpHlq9HNGl1vsw_srX49t5tCv88JkhuE=",
                  "expires_at": time.time() + 999999}
         IdentityManager.save(login)
-
-        # signal skill manager that basic setup is complete
-        sleep(0.5)  # buffer time to allow configs to reload
-        self.bus.emit(Message('mycroft.setup.complete'))
-        self.state = SetupState.INACTIVE
 
     # selene pairing
     def update_device_attributes_on_backend(self):
@@ -443,6 +435,8 @@ class PairingSkill(OVOSSkill):
 
     def kickoff_pairing(self):
         self.state = SetupState.PAIRING
+        self.data = None
+
         # Kick off pairing...
         with self.counter_lock:
             if self.count > -1:
@@ -457,7 +451,7 @@ class PairingSkill(OVOSSkill):
 
         try:
             # Obtain a pairing code from the backend
-            self.data = self.api.get_code(self.state)
+            self.data = self.api.get_code(self.uuid)
 
             # Keep track of when the code was obtained.  The codes expire
             # after 20 hours.
@@ -502,7 +496,7 @@ class PairingSkill(OVOSSkill):
             # backend, this will succeed.  Otherwise it throws and HTTPError()
 
             token = self.data.get("token")
-            login = self.api.activate(self.state, token)  # HTTPError() thrown
+            login = self.api.activate(self.uuid, token)  # HTTPError() thrown
 
             # When we get here, the pairing code has been entered on the
             # backend and pairing can now be saved.
@@ -541,6 +535,7 @@ class PairingSkill(OVOSSkill):
             self.bus.emit(Message("configuration.updated"))
 
             self.update_device_attributes_on_backend()
+            self.state = SetupState.INACTIVE
 
         except HTTPError:
             # speak pairing code every 60th second
@@ -650,7 +645,7 @@ class PairingSkill(OVOSSkill):
         # allow GUI to linger around for a bit
         sleep(5)
         # self.gui.remove_page("status.qml")
-        self.handle_display_manager("InstallingSkills")
+        self.handle_display_manager("LoadingSkills")
 
     def show_pairing_fail(self):
         self.gui.release()

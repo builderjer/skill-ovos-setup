@@ -64,7 +64,7 @@ Item {
                 anchors.centerIn: parent
                 font.bold: true
                 font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                text: "Mycroft Backend"
+                text: "Mycroft Selene"
                 color: Kirigami.Theme.highlightColor
             }
         }
