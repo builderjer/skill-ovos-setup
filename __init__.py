@@ -355,7 +355,7 @@ class PairingSkill(OVOSSkill):
         self.kickoff_pairing()
 
     def select_local(self, message=None):
-        # mock backend selected
+        self.change_to_local_backend()
         self.data = None
         self.handle_stt_menu()
 
@@ -370,6 +370,11 @@ class PairingSkill(OVOSSkill):
 
     def select_stt(self, message):
         self.selected_stt = message.data["engine"]
+        if self.selected_stt == "google":
+            self.change_to_chromium()
+        elif self.selected_stt == "kaldi":
+            self.change_to_vosk()
+
         self.send_stop_signal("pairing.stt.menu.stop")
         self.handle_tts_menu()
 
@@ -384,19 +389,6 @@ class PairingSkill(OVOSSkill):
 
     def select_tts(self, message):
         self.selected_tts = message.data["engine"]
-        self.send_stop_signal()
-        self.handle_display_manager("LoadingSkills")
-        self.finalize_local_setup()
-
-    ## Local backend
-    def finalize_local_setup(self):
-        # set STT
-        if self.selected_stt == "google":
-            self.change_to_chromium()
-        elif self.selected_stt == "kaldi":
-            self.change_to_vosk()
-
-        # set TTS
         if self.selected_tts == "mimic":
             self.change_to_mimic()
         elif self.selected_tts == "mimic2":
@@ -406,11 +398,11 @@ class PairingSkill(OVOSSkill):
         elif self.selected_tts == "larynx":
             self.change_to_larynx()
 
-        # set backend
-        self.change_to_local_backend()
-
+        self.send_stop_signal()
+        self.handle_display_manager("LoadingSkills")
         self.state = SetupState.INACTIVE
 
+    ## Local backend pairing
     def create_dummy_identity(self):
         # create pairing file with dummy data
         login = {"uuid": self.uuid,
