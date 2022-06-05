@@ -28,6 +28,19 @@ from requests import HTTPError
 from ovos_utils.network_utils import is_connected
 from ovos_utils.gui import can_use_local_gui
 
+from enum import Enum
+
+
+class SetupState(str, Enum):
+    FIRST_BOOT = "first"
+    LOADING = "loading"
+    INACTIVE = "inactive"
+    SELECTING_WIFI = "wifi"
+    SELECTING_BACKEND = "backend"
+    SELECTING_STT = "stt"
+    SELECTING_TTS = "tts"
+    PAIRING = "pairing"
+
 
 class PairingSkill(OVOSSkill):
     poll_frequency = 5  # secs between checking server for activation
@@ -50,18 +63,7 @@ class PairingSkill(OVOSSkill):
         self.mycroft_ready = False
         self.num_failed_codes = 0
 
-        self.in_pairing = False
-        self.selected_stt = None
-        self.selected_tts = None
-
-    @property
-    def selected_backend(self):
-        return self.settings.get("selected_backend")
-
-    @selected_backend.setter
-    def selected_backend(self, value):
-        self.settings["selected_backend"] = value
-        self.settings.store()
+        self.state = SetupState.LOADING
 
     # startup
     def initialize(self):
@@ -72,6 +74,7 @@ class PairingSkill(OVOSSkill):
             self.settings["color"] = "#FF0000"
 
         self.add_event("mycroft.not.paired", self.not_paired)
+        self.add_event("ovos.setup.state", self.handle_get_setup_state)
 
         # events for GUI interaction
         self.gui.register_handler("mycroft.device.set.backend", self.handle_backend_selected_event)
@@ -81,28 +84,64 @@ class PairingSkill(OVOSSkill):
         self.gui.register_handler("mycroft.device.confirm.tts", self.select_tts)
         self.nato_dict = self.translate_namedvalues('codes')
 
+        if not self.selected_backend:
+            self.state = SetupState.FIRST_BOOT
+        else:
+            self.state = SetupState.INACTIVE
+
         if not is_paired():
             self.make_active()  # to enable converse
             if is_connected():
                 # trigger pairing
+                self.state = SetupState.SELECTING_BACKEND
                 self.bus.emit(Message("mycroft.not.paired"))
             else:
+                self.state = SetupState.SELECTING_WIFI
                 # trigger pairing after wifi
                 self.bus.once("ovos.wifi.setup.completed", self.handle_wifi_finish)
         else:
             self.update_device_attributes_on_backend()
-            if self.selected_backend is not None:
-                # if initial setup was previously finished
-                # tell skill manager to not wait anymore
-                self.bus.emit(Message('mycroft.setup.complete'))
+
+    @property
+    def selected_backend(self):
+        return self.settings.get("selected_backend")
+
+    @selected_backend.setter
+    def selected_backend(self, value):
+        self.settings["selected_backend"] = value
+        self.settings.store()
+
+    @property
+    def selected_stt(self):
+        return self.settings.get("selected_stt")
+
+    @selected_stt.setter
+    def selected_stt(self, value):
+        self.settings["selected_stt"] = value
+        self.settings.store()
+
+    @property
+    def selected_tts(self):
+        return self.settings.get("selected_tts")
+
+    @selected_tts.setter
+    def selected_tts(self, value):
+        self.settings["selected_tts"] = value
+        self.settings.store()
+
+    def handle_get_setup_state(self, message):
+        self.bus.emit(message.response({"state": self.state}))
 
     def show_loading_screen(self, message=None):
         self.handle_display_manager("LoadingScreen")
 
     def handle_wifi_finish(self, message):
         self.show_loading_screen()
-        if not is_paired():
+        if not is_paired() or not self.selected_backend:
+            self.state = SetupState.SELECTING_BACKEND
             self.bus.emit(message.forward("mycroft.not.paired"))
+        else:
+            self.state = SetupState.INACTIVE
 
     def send_stop_signal(self, stop_event=None, should_sleep=True):
         # TODO move this one into default OVOSkill class
@@ -137,10 +176,12 @@ class PairingSkill(OVOSSkill):
         self.gui.remove_page("ProcessLoader.qml")
         self.bus.emit(Message("mycroft.gui.screen.close",
                               {"skill_id": self.skill_id}))
+        self.state = SetupState.INACTIVE
 
     # voice events
     def converse(self, message):
-        if self.in_pairing:
+        if self.state != SetupState.INACTIVE or \
+                self.state != SetupState.FIRST_BOOT:
             # capture all utterances until paired
             # prompts from this skill are handled with get_response
             return True
@@ -149,7 +190,7 @@ class PairingSkill(OVOSSkill):
     @intent_handler(IntentBuilder("PairingIntent")
                     .require("PairingKeyword").require("DeviceKeyword"))
     def handle_pairing(self, message=None):
-        self.in_pairing = True
+        self.state = SetupState.SELECTING_BACKEND
 
         if not can_use_local_gui():
             # TODO add a voice only interface for pairing
@@ -158,6 +199,7 @@ class PairingSkill(OVOSSkill):
             self.change_to_mimic()
             self.change_to_local_backend()
             self.finalize_local_setup()
+            self.state = SetupState.INACTIVE
             return
 
         if self.using_mock:
@@ -270,6 +312,7 @@ class PairingSkill(OVOSSkill):
     #### Backend selection menu
     @killable_event(msg="pairing.backend.menu.stop")
     def handle_backend_menu(self):
+        self.state = SetupState.SELECTING_BACKEND
         self.send_stop_signal("pairing.confirmation.stop")
         self.handle_display_manager("BackendSelect")
         self.speak_dialog("select_backend_gui")
@@ -313,15 +356,10 @@ class PairingSkill(OVOSSkill):
         if check_remote_pairing(ignore_errors=True):
             # Already paired! Just tell user
             self.speak_dialog("already.paired")
-            self.in_pairing = False
+            self.state = SetupState.INACTIVE
         elif not self.data:
             # continue to normal pairing process
             self.kickoff_pairing()
-
-        # signal skill manager that basic setup is complete
-        # this will kick in the pairing check before mycroft.ready
-        sleep(0.5)  # buffer time to allow configs to reload and detect selene
-        self.bus.emit(Message('mycroft.setup.complete'))
 
     def select_local(self, message=None):
         # mock backend selected
@@ -332,6 +370,7 @@ class PairingSkill(OVOSSkill):
     @killable_event(msg="pairing.stt.menu.stop",
                     callback=handle_intent_aborted)
     def handle_stt_menu(self):
+        self.state = SetupState.SELECTING_STT
         self.handle_display_manager("BackendLocalSTT")
         self.send_stop_signal("pairing.confirmation.stop")
         self.speak_dialog("select_mycroft_stt_gui")
@@ -345,6 +384,7 @@ class PairingSkill(OVOSSkill):
     @killable_event(msg="pairing.tts.menu.stop",
                     callback=handle_intent_aborted)
     def handle_tts_menu(self):
+        self.state = SetupState.SELECTING_TTS
         self.handle_display_manager("BackendLocalTTS")
         self.send_stop_signal("pairing.stt.menu.stop")
         self.speak_dialog("select_mycroft_tts_gui")
@@ -382,10 +422,10 @@ class PairingSkill(OVOSSkill):
                  "expires_at": time.time() + 999999}
         IdentityManager.save(login)
 
-        self.in_pairing = False
         # signal skill manager that basic setup is complete
         sleep(0.5)  # buffer time to allow configs to reload
         self.bus.emit(Message('mycroft.setup.complete'))
+        self.state = SetupState.INACTIVE
 
     # selene pairing
     def update_device_attributes_on_backend(self):
@@ -402,6 +442,7 @@ class PairingSkill(OVOSSkill):
             pass
 
     def kickoff_pairing(self):
+        self.state = SetupState.PAIRING
         # Kick off pairing...
         with self.counter_lock:
             if self.count > -1:
@@ -533,7 +574,7 @@ class PairingSkill(OVOSSkill):
 
         self.data = None
         self.count = -1
-        self.in_pairing = False
+        self.state = SetupState.INACTIVE
 
     def abort_and_restart(self, quiet=False):
         # restart pairing sequence
