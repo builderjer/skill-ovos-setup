@@ -88,15 +88,15 @@ class PairingSkill(OVOSSkill):
         # will always trigger setup on boot
         # self.selected_backend = None
 
-        if not self.selected_backend:
-            self.state = SetupState.FIRST_BOOT
-            self.make_active()  # to enable converse
-            self.bus.emit(Message("mycroft.not.paired"))
-        elif not is_connected():
+        if not is_connected():
             self.state = SetupState.SELECTING_WIFI
             # trigger pairing after wifi
             self.bus.once("ovos.wifi.setup.completed",
                           self.handle_wifi_finish)
+        elif not self.selected_backend:
+            self.state = SetupState.FIRST_BOOT
+            self.make_active()  # to enable converse
+            self.bus.emit(Message("mycroft.not.paired"))
         elif not is_paired():
             # trigger pairing
             self.state = SetupState.SELECTING_BACKEND
