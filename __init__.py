@@ -93,6 +93,8 @@ class PairingSkill(OVOSSkill):
             # trigger pairing after wifi
             self.bus.once("ovos.wifi.setup.completed",
                           self.handle_wifi_finish)
+            self.bus.once("ovos.phal.wifi.plugin.skip.setup",
+                          self.handle_wifi_skip)
         elif not self.selected_backend:
             self.state = SetupState.FIRST_BOOT
             self.make_active()  # to enable converse
@@ -135,16 +137,18 @@ class PairingSkill(OVOSSkill):
     def handle_get_setup_state(self, message):
         self.bus.emit(message.response({"state": self.state}))
 
-    def show_loading_screen(self, message=None):
-        self.handle_display_manager("LoadingScreen")
-
     def handle_wifi_finish(self, message):
-        self.show_loading_screen()
+        self.handle_display_manager("LoadingScreen")
         if not is_paired() or not self.selected_backend:
             self.state = SetupState.SELECTING_BACKEND
             self.bus.emit(message.forward("mycroft.not.paired"))
         else:
             self.state = SetupState.INACTIVE
+
+    def handle_wifi_skip(self, message):
+        self.log.info("Offline mode selected, setup will resume on restart")
+        self.handle_display_manager("OfflineMode")
+        self.state = SetupState.INACTIVE
 
     def send_stop_signal(self, stop_event=None, should_sleep=True):
         # TODO move this one into default OVOSkill class
