@@ -105,6 +105,7 @@ class PairingSkill(OVOSSkill):
             self.bus.emit(Message("mycroft.not.paired"))
         else:
             self.state = SetupState.INACTIVE
+            self.handle_display_manager("LoadingSkills")
             self.update_device_attributes_on_backend()
 
     @property
@@ -201,11 +202,8 @@ class PairingSkill(OVOSSkill):
         self.state = SetupState.SELECTING_BACKEND
 
         if not can_use_gui():
-            # TODO add a voice only interface for pairing
-            # configure offline default values
-            # self.change_to_vosk()
-            # self.change_to_mimic()
-            self.change_to_local_backend()
+            if message:  # intent
+                self.speak_dialog("screen.required")
             self.state = SetupState.INACTIVE
             return
 
@@ -527,8 +525,7 @@ class PairingSkill(OVOSSkill):
             # independently.
             self.bus.emit(Message("mycroft.mic.unmute", None))
 
-            # Send signal to update configuration
-            self.bus.emit(Message("configuration.updated"))
+            self.handle_display_manager("LoadingSkills")
 
             self.update_device_attributes_on_backend()
             self.state = SetupState.INACTIVE
@@ -638,10 +635,6 @@ class PairingSkill(OVOSSkill):
         # self.gui.show_page("status.qml", override_idle=True,
         # override_animations=True)
         self.handle_display_manager("Status")
-        # allow GUI to linger around for a bit
-        sleep(5)
-        # self.gui.remove_page("status.qml")
-        self.handle_display_manager("LoadingSkills")
 
     def show_pairing_fail(self):
         self.gui.release()
