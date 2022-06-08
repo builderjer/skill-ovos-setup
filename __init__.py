@@ -321,7 +321,8 @@ class PairingSkill(OVOSSkill):
         self.state = SetupState.SELECTING_BACKEND
         self.send_stop_signal("pairing.confirmation.stop")
         self.handle_display_manager("BackendSelect")
-        self.speak_dialog("select_backend_gui")
+        self.speak_dialog("backend_intro")
+        self.speak_dialog("select_option_gui")
 
     def handle_backend_selected_event(self, message):
         self.send_stop_signal("pairing.backend.menu.stop", should_sleep=False)
@@ -338,10 +339,12 @@ class PairingSkill(OVOSSkill):
     def handle_backend_confirmation(self, selection):
         if selection == "selene":
             self.handle_display_manager("BackendMycroft")
-            self.speak_dialog("selected_mycroft_backend_gui")
+            self.speak_dialog("selene_intro")
+            self.speak_dialog("selene_confirm_gui")
         elif selection == "local":
             self.handle_display_manager("BackendLocal")
-            self.speak_dialog("selected_local_backend_gui")
+            self.speak_dialog("no_backend_intro")
+            self.speak_dialog("no_backend_confirm_gui")
 
     def handle_backend_confirmation_event(self, message):
         self.send_stop_signal("pairing.confirmation.stop")
@@ -368,7 +371,8 @@ class PairingSkill(OVOSSkill):
         self.state = SetupState.SELECTING_STT
         self.handle_display_manager("BackendLocalSTT")
         self.send_stop_signal("pairing.confirmation.stop")
-        self.speak_dialog("select_mycroft_stt_gui")
+        self.speak_dialog("stt_intro")
+        self.speak_dialog("select_option_gui")
 
     def select_stt(self, message):
         self.selected_stt = message.data["engine"]
@@ -387,7 +391,8 @@ class PairingSkill(OVOSSkill):
         self.state = SetupState.SELECTING_TTS
         self.handle_display_manager("BackendLocalTTS")
         self.send_stop_signal("pairing.stt.menu.stop")
-        self.speak_dialog("select_mycroft_tts_gui")
+        self.speak_dialog("tts_intro")
+        self.speak_dialog("select_option_gui")
 
     def select_tts(self, message):
         self.selected_tts = message.data["engine"]
