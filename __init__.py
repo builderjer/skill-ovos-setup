@@ -530,6 +530,9 @@ class PairingSkill(OVOSSkill):
             # independently.
             self.bus.emit(Message("mycroft.mic.unmute", None))
 
+            # allow gui page to linger around a bit
+            sleep(5)
+
             self.handle_display_manager("LoadingSkills")
 
             self.update_device_attributes_on_backend()
