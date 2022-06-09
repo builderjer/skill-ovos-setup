@@ -2,7 +2,7 @@
 from setuptools import setup
 
 # skill_id=package_name:SkillClass
-PLUGIN_ENTRY_POINT = 'ovos-skill-setup.openvoiceos=ovos_skill_setup:PairingSkill'
+PLUGIN_ENTRY_POINT = 'skill-ovos-setup.openvoiceos=ovos_skill_setup:PairingSkill'
 
 setup(
     # this is the package name that goes on pip
