@@ -31,16 +31,16 @@ Item {
     ListModel {
         id: backendFeatureList
         ListElement {
-            text: "No Pairing Required"
+            text: "Automatic Pairing"
         }
         ListElement {
-            text: "Configurable STT Options: Google | Vosk"
+            text: "Needs to be hosted in a private network before hand"
+        }
+        ListElement {
+            text: "Configure STT in backend"
         }
         ListElement {
             text: "Configurable TTS Options: Mimic2 | Mimic | Larynx | Pico"
-        }
-        ListElement {
-            text: "Set your own API Keys"
         }
     }
 
@@ -65,7 +65,7 @@ Item {
                 anchors.centerIn: parent
                 font.bold: true
                 font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                text: "No Backend"
+                text: "Personal Backend"
                 color: Kirigami.Theme.highlightColor
             }
         }
@@ -88,7 +88,7 @@ Item {
                     color: Kirigami.Theme.textColor
                     wrapMode: Text.WordWrap
                     font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                    text: "Allows your device to work offline"
+                    text: "Manage all your devices without trusting mycroft servers"
                 }
 
                 Item {
@@ -183,7 +183,7 @@ Item {
 
                 onClicked: {
                     Mycroft.SoundEffects.playClickedSound(Qt.resolvedUrl("sounds/clicked.wav"))
-                    triggerGuiEvent("mycroft.return.select.backend", {"page": "local"})
+                    triggerGuiEvent("mycroft.return.select.backend", {"page": "personal"})
                 }
             }
 
@@ -219,7 +219,7 @@ Item {
 
                 onClicked: {
                     Mycroft.SoundEffects.playClickedSound(Qt.resolvedUrl("sounds/clicked.wav"))
-                    triggerGuiEvent("mycroft.device.confirm.backend", {"backend": "local"})
+                    triggerGuiEvent("mycroft.device.confirm.backend", {"backend": "personal"})
                 }
             }
         }

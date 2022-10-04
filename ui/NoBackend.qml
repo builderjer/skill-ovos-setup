@@ -25,25 +25,22 @@ import Mycroft 1.0 as Mycroft
 Item {
     id: backendView
     anchors.fill: parent
-    property bool horizontalMode: root.width > root.height ? 1 :0
 
-    Component.onCompleted: {
-        btnba2.forceActiveFocus()
-    }
+    property bool horizontalMode: backendView.width > backendView.height ? 1 :0
 
     ListModel {
         id: backendFeatureList
         ListElement {
-            text: "Requires Pairing"
+            text: "No Pairing Required"
         }
         ListElement {
-            text: "Uses Default Mycroft STT"
+            text: "Configurable STT Options: Google | Vosk"
         }
         ListElement {
-            text: "Provides Web Skill Settings Interface"
+            text: "Configurable TTS Options: Mimic2 | Mimic | Larynx | Pico"
         }
         ListElement {
-            text: "Provides Web Device Configuration Interface"
+            text: "No internet needed"
         }
     }
 
@@ -68,7 +65,7 @@ Item {
                 anchors.centerIn: parent
                 font.bold: true
                 font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                text: "Mycroft Selene"
+                text: "No Backend"
                 color: Kirigami.Theme.highlightColor
             }
         }
@@ -79,7 +76,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: bottomArea.top
             anchors.margins: Kirigami.Units.smallSpacing
-
+            
             ColumnLayout {
                 anchors.fill: parent
                 spacing: Kirigami.Units.smallSpacing
@@ -91,7 +88,7 @@ Item {
                     color: Kirigami.Theme.textColor
                     wrapMode: Text.WordWrap
                     font.pixelSize: horizontalMode ? backendView.width * 0.035 : backendView.height * 0.040
-                    text: "The official backend service provided by Mycroft AI"
+                    text: "Allows your device to work offline"
                 }
 
                 Item {
@@ -148,25 +145,21 @@ Item {
             id: bottomArea
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: footerArea.top
+            anchors.bottom: parent.bottom
             anchors.topMargin: Kirigami.Units.largeSpacing
             anchors.leftMargin: Kirigami.Units.largeSpacing
             anchors.rightMargin: Kirigami.Units.largeSpacing
-            anchors.bottomMargin: Kirigami.Units.largeSpacing
-            height: Kirigami.Units.gridUnit * 3
+            height: Kirigami.Units.gridUnit * 2
 
             Button {
                 id: btnba1
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                KeyNavigation.right: btnba2
-                Keys.onReturnPressed: clicked()
-
                 background: Rectangle {
-                    color: btnba1.down ? "transparent" :  (btnba1.activeFocus ? Kirigami.Theme.textColor : Kirigami.Theme.highlightColor)
+                    color: btnba1.down ? "transparent" :  Kirigami.Theme.highlightColor
                     border.width: 3
-                    border.color: btnba1.activeFocus ? Kirigami.Theme.textColor : Qt.darker(Kirigami.Theme.highlightColor, 1.2)
+                    border.color: Qt.darker(Kirigami.Theme.highlightColor, 1.2)
                     radius: 10
 
                     Rectangle {
@@ -189,9 +182,8 @@ Item {
                 }
 
                 onClicked: {
-                    Mycroft.SoundEffects.playClickedSound(Qt.resolvedUrl("../sounds/clicked.wav"))
-                    triggerGuiEvent("mycroft.return.select.backend",
-                    {"page": "selene"})
+                    Mycroft.SoundEffects.playClickedSound(Qt.resolvedUrl("sounds/clicked.wav"))
+                    triggerGuiEvent("mycroft.return.select.backend", {"page": "offline"})
                 }
             }
 
@@ -200,13 +192,10 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                KeyNavigation.left: btnba1
-                Keys.onReturnPressed: clicked()
-
                 background: Rectangle {
-                    color: btnba2.down ? "transparent" :  (btnba2.activeFocus ? Kirigami.Theme.textColor : Kirigami.Theme.highlightColor)
+                    color: btnba2.down ? "transparent" :  Kirigami.Theme.highlightColor
                     border.width: 3
-                    border.color: btnba2.activeFocus ? Kirigami.Theme.textColor : Qt.darker(Kirigami.Theme.highlightColor, 1.2)
+                    border.color: Qt.darker(Kirigami.Theme.highlightColor, 1.2)
                     radius: 10
 
                     Rectangle {
@@ -229,44 +218,9 @@ Item {
                 }
 
                 onClicked: {
-                    Mycroft.SoundEffects.playClickedSound(Qt.resolvedUrl("../sounds/clicked.wav"))
-                    triggerGuiEvent("mycroft.device.confirm.backend",
-                    {"backend": "selene"})
+                    Mycroft.SoundEffects.playClickedSound(Qt.resolvedUrl("sounds/clicked.wav"))
+                    triggerGuiEvent("mycroft.device.confirm.backend", {"backend": "offline"})
                 }
-            }
-        }
-
-        Item {
-            id: footerArea
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Kirigami.Units.gridUnit * 2
-
-            Kirigami.Separator {
-                id: footerAreaSept
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: 1
-                color: Kirigami.Theme.highlightColor
-            }
-
-            Label {
-                anchors.top: footerAreaSept
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Mycroft.Units.gridUnit / 3
-                fontSizeMode: Text.Fit
-                minimumPixelSize: 10
-                font.pixelSize: 24
-                color: Kirigami.Theme.textColor
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-                maximumLineCount: 1
-                text: "Use ◀ ▶ arrow keys to navigate, Use the ● select button to choose an option"
             }
         }
     }
