@@ -228,6 +228,12 @@ class PairingSkill(OVOSSkill):
                                       error_callback=self.on_pairing_error)
         self._init_setup_options()
 
+        # set default language
+        self.selected_language = self.lang.split("-")[0].lower()
+        if self.selected_language not in [l["code"] for l in self.settings["langs"]]:
+            LOG.warning(f"Default language is not available in {self.skill_id}")
+            self.selected_language = "en"
+
         self.add_event("mycroft.not.paired", self.not_paired)
         self.add_event("ovos.setup.state.get", self.handle_get_setup_state)
 
@@ -244,9 +250,29 @@ class PairingSkill(OVOSSkill):
 
         self._init_state()
 
+    def _init_setup_options(self):
+        # distros/images can customize setup by placing a json file in skill settings XDG location
+        self.setup = SetupManager(self.bus)
+
+        # configure setup steps based on skill settings, this allows distros to skip some aspects of setup
         if "enable_language_selection" not in self.settings:
             self.settings["enable_language_selection"] = False
+        if "enable_backend_selection" not in self.settings:
+            self.settings["enable_backend_selection"] = True
+        if "enable_stt_selection" not in self.settings:
+            self.settings["enable_stt_selection"] = True
+        if "enable_tts_selection" not in self.settings:
+            self.settings["enable_tts_selection"] = True
 
+        # limit selectable plugins
+        if "tts_blacklist" not in self.settings:
+            self.settings["tts_blacklist"] = ["ovos-tts-plugin-SAM",
+                                              "ovos-tts-plugin-beepspeak",
+                                              "ovos_tts_plugin_espeakng"]
+        if "stt_blacklist" not in self.settings:
+            self.settings["stt_blacklist"] = ["ovos-stt-plugin-pocketsphinx"]
+
+        # configure selectable languages
         if "langs" not in self.settings:
             # Name: display name to display in UI
             # Code: Used by ovos shell locale, get tts and stt engines
@@ -260,15 +286,9 @@ class PairingSkill(OVOSSkill):
                 {"name": "German", "code": "de", "system_code": "de_DE"},
                 {"name": "Dutch", "code": "nl", "system_code": "nl_NL"}
             ]
-            self.selected_language = self.lang.split("-")[0].lower()
-            if self.selected_language not in [l["code"] for l in self.settings["langs"]]:
-                LOG.warning(f"Default language is not available in {self.skill_id}")
-                self.selected_language = "en"
 
-    def _init_setup_options(self):
-        self.setup = SetupManager(self.bus)
-        # read default values for voice interaction from settings
-        # this allows images to change these by placing a json file in XDG location
+        # read default plugins for simplified voice route from settings
+        # TODO - validate that these are in fact installed
         if self.settings.get("offline_stt"):
             engine = self.settings.get("offline_stt")
             fallback = self.settings.get("offline_fallback_stt")
@@ -512,6 +532,15 @@ class PairingSkill(OVOSSkill):
     #### Backend selection menu
     @killable_event(msg="pairing.backend.menu.stop")
     def handle_backend_menu(self):
+        if not self.settings["enable_backend_selection"]:
+            if self.settings["enable_stt_selection"]:
+                self.handle_stt_menu()
+            elif self.settings["enable_tts_selection"]:
+                self.handle_tts_menu()
+            else:
+                self.end_setup(success=True)
+            return
+
         self.state = SetupState.SELECTING_BACKEND
         self.send_stop_signal("pairing.confirmation.stop")
         self.handle_display_manager("BackendSelect")
@@ -661,10 +690,19 @@ class PairingSkill(OVOSSkill):
     @killable_event(msg="pairing.stt.menu.stop",
                     callback=handle_intent_aborted)
     def handle_stt_menu(self):
+        if not self.settings["enable_stt_selection"]:
+            if self.settings["enable_tts_selection"]:
+                self.handle_tts_menu()
+            else:
+                self.end_setup(success=True)
+            return
+
         self.state = SetupState.SELECTING_STT
-        model = get_stt_lang_configs(lang=self.selected_language, include_dialects=True)
-        supported_stt_engines = list()
-        for engine, configs in model.items():
+        cfgs = get_stt_lang_configs(lang=self.selected_language, include_dialects=True)
+        supported_stt_engines = []
+        for engine, configs in cfgs.items():
+            if engine in self.settings["stt_blacklist"]:
+                continue
             # For Display purposes, we want to show the engine name without the underscore or dash and capitalized all
             plugin_display_name = engine.replace("_", " ").replace("-", " ").title()
             for config in configs:
@@ -710,10 +748,16 @@ class PairingSkill(OVOSSkill):
     @killable_event(msg="pairing.tts.menu.stop",
                     callback=handle_intent_aborted)
     def handle_tts_menu(self):
+        if not self.settings["enable_tts_selection"]:
+            self.end_setup(success=True)
+            return
+
         self.state = SetupState.SELECTING_TTS
-        model = get_tts_lang_configs(lang=self.selected_language, include_dialects=True)
-        supported_tts_engines = list()
-        for engine, configs in model.items():
+        cfgs = get_tts_lang_configs(lang=self.selected_language, include_dialects=True)
+        supported_tts_engines = []
+        for engine, configs in cfgs.items():
+            if engine in self.settings["stt_blacklist"]:
+                continue
             # For Display purposes, we want to show the engine name without the underscore or dash and capitalized all
             plugin_display_name = engine.replace("_", " ").replace("-", " ").title()
             # Need to go one level deeper to get the voice name and gender
@@ -763,11 +807,11 @@ class PairingSkill(OVOSSkill):
             self.setup.change_to_online_female()
 
         self.send_stop_signal("pairing.tts.menu.stop")
-        self.handle_display_manager("LoadingSkills")
         self.end_setup(success=True)
 
     def end_setup(self, success=False):
         if self.state != SetupState.INACTIVE:
+            self.handle_display_manager("LoadingSkills")
             if success:  # dont restart setup on next boot
                 self.settings["first_setup"] = False
             self.state = SetupState.FINISHED
