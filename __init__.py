@@ -10,14 +10,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import time
 from enum import Enum
 from time import sleep
-from uuid import uuid4
 
 from adapt.intent import IntentBuilder
 from mycroft.api import DeviceApi, is_paired, check_remote_pairing
-from mycroft.identity import IdentityManager
 from mycroft.messagebus.message import Message
 from mycroft.skills.core import intent_handler
 from ovos_utils.gui import can_use_gui
@@ -27,9 +24,11 @@ from ovos_workshop.decorators import killable_event
 from ovos_workshop.skills import OVOSSkill
 from ovos_backend_client.pairing import PairingManager
 from ovos_backend_client.backends import BackendType, get_backend_type
+from ovos_backend_client.backends.selene import SELENE_API_URL
 from ovos_config.config import update_mycroft_config
 from ovos_plugin_manager.stt import get_stt_lang_configs
 from ovos_plugin_manager.tts import get_tts_lang_configs
+
 
 class SetupState(str, Enum):
     FIRST_BOOT = "first"
@@ -199,7 +198,6 @@ class SetupManager:
             }
         }
         update_mycroft_config(config, bus=self.bus)
-        self.create_dummy_identity()
 
     def change_to_no_backend(self):
         config = {
@@ -209,20 +207,8 @@ class SetupManager:
             }
         }
         update_mycroft_config(config, bus=self.bus)
-        self.create_dummy_identity()
 
     # backend actions
-    @staticmethod
-    def create_dummy_identity():
-        # TODO - long term we want to remove this
-        #  for now 3rd party code expects this to exist to check for pairing
-        # create pairing file with dummy data
-        login = {"uuid": str(uuid4()),
-                 "access": "OVOSdbF1wJ4jA5lN6x6qmVk_QvJPqBQZTUJQm7fYzkDyY_Y=",
-                 "refresh": "OVOS66c5SpAiSpXbpHlq9HNGl1vsw_srX49t5tCv88JkhuE=",
-                 "expires_at": time.time() + 999999}
-        IdentityManager.save(login)
-
     @staticmethod
     def update_device_attributes_on_backend():
         """Communicate version information to the backend.
@@ -650,7 +636,8 @@ class PairingSkill(OVOSSkill):
 
     def handle_selene_selected(self, message):
         self.pairing.pairing_url = self.settings["pairing_url"] = "home.mycroft.ai"  # scroll in mk1 faceplate
-        self.pairing.set_api_url("api.mycroft.ai")
+        # this will make a new DeviceApi object internally pointing to right url
+        self.pairing.set_api_url(SELENE_API_URL, backend_type=BackendType.SELENE)
         # selene selected
         self.setup.change_to_selene()
         # continue to normal pairing process
@@ -664,7 +651,8 @@ class PairingSkill(OVOSSkill):
     def handle_personal_backend_url(self, message):
         host = message.data["host_address"]
         self.pairing.pairing_url = self.settings["pairing_url"] = host
-        self.pairing.set_api_url(host)
+        # this will make a new DeviceApi object internally pointing to right url
+        self.pairing.set_api_url(host, backend_type=BackendType.PERSONAL)
         self.setup.change_to_local_backend(host)
         # continue to normal pairing process
         self.state = SetupState.PAIRING
@@ -672,8 +660,13 @@ class PairingSkill(OVOSSkill):
 
     def handle_no_backend_selected(self, message):
         self.pairing.pairing_url = self.settings["pairing_url"] = ""
+        # this will make a new DeviceApi object internally pointing to right url
+        self.pairing.set_api_url("127.0.0.1", backend_type=BackendType.OFFLINE)
         self.pairing.data = None
         self.setup.change_to_no_backend()
+        # auto pair
+        self.pairing.api.activate(self.pairing.uuid, "123ABC")
+        # continue to STT
         self.handle_stt_menu()
 
     ### STT selection
