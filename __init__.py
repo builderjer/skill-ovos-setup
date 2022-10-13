@@ -23,7 +23,9 @@ from ovos_backend_client.pairing import PairingManager, is_paired, check_remote_
 from ovos_config.config import update_mycroft_config
 from ovos_plugin_manager.stt import get_stt_lang_configs
 from ovos_plugin_manager.tts import get_tts_lang_configs
-from ovos_utils.gui import can_use_gui
+
+from ovos_utils.gui import is_gui_running
+from ovos_utils.device_input import can_use_touch_mouse
 from ovos_utils.log import LOG
 from ovos_utils.network_utils import is_connected
 from ovos_workshop.decorators import killable_event
@@ -274,8 +276,14 @@ class PairingSkill(OVOSSkill):
         self.pairing = None
         self.mycroft_ready = False
         self._state = SetupState.LOADING
-        self.pairing_mode = PairingMode.VOICE
         self.selected_language = None
+
+    @property
+    def pairing_mode(self):
+        if not is_gui_running() or not can_use_touch_mouse():
+            return PairingMode.VOICE
+        else:
+            return PairingMode.GUI
 
     # startup
     def initialize(self):
@@ -379,13 +387,6 @@ class PairingSkill(OVOSSkill):
             self.setup.set_offline_female_opt(engine, cfg)
 
     def _init_state(self):
-        if not can_use_gui(self.bus):
-            # ask for options in a loop
-            self.pairing_mode = PairingMode.VOICE
-        else:
-            # display gui with minimal dialog
-            self.pairing_mode = PairingMode.GUI
-
         self.first_setup = self.settings.get("first_setup", True)
         # uncomment this line for debugging
         # will always trigger setup on boot
@@ -502,7 +503,6 @@ class PairingSkill(OVOSSkill):
                     .require("pairing").require("device"))
     def handle_pairing(self, message=None):
         self.state = SetupState.SELECTING_BACKEND
-
         if message:  # intent
             if self.backend_type in [BackendType.SELENE, BackendType.PERSONAL]:
                 if check_remote_pairing(ignore_errors=True):
@@ -567,8 +567,10 @@ class PairingSkill(OVOSSkill):
         else:
             lang_support_enabled = self.settings.get("enable_language_selection", False)
             if not lang_support_enabled:
+                self.gui["language_selection_enabled"] = False
                 self.handle_backend_menu()
             else:
+                self.gui["language_selection_enabled"] = True
                 self.handle_language_menu()
 
     def handle_language_menu(self):
