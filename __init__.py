@@ -595,12 +595,10 @@ class PairingSkill(OVOSSkill):
     @killable_event(msg="pairing.backend.menu.stop")
     def handle_backend_menu(self):
         if not self.settings["enable_backend_selection"]:
-            if self.settings["enable_stt_selection"]:
-                self.handle_stt_menu()
-            elif self.settings["enable_tts_selection"]:
-                self.handle_tts_menu()
+            if not is_paired():
+                self.handle_no_backend_selected(None)
             else:
-                self.end_setup(success=True)
+                self.handle_stt_menu()
             return
 
         self.state = SetupState.SELECTING_BACKEND
