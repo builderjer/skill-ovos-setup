@@ -25,12 +25,16 @@ for lang in target_langs:
 
     for name, src in src_files.items():
         if name.endswith(".dialog"):
+            os.makedirs(join(res_folder, lang, "dialog"), exist_ok=True)
             dst = join(res_folder, lang, "dialog", name)
         elif name.endswith(".voc"):
+            os.makedirs(join(res_folder, lang, "vocab"), exist_ok=True)
             dst = join(res_folder, lang, "vocab", name)
         elif name.endswith(".rx"):
+            os.makedirs(join(res_folder, lang, "regex"), exist_ok=True)
             dst = join(res_folder, lang, "regex", name)
         elif name.endswith(".intent"):
+            os.makedirs(join(res_folder, lang, "intents"), exist_ok=True)
             dst = join(res_folder, lang, "intents", name)
         else:
             dst = join(res_folder, lang, name)
