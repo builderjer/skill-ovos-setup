@@ -502,12 +502,13 @@ class PairingSkill(OVOSSkill):
 
     # voice events
     def converse(self, message):
-        if self.state != SetupState.INACTIVE or \
-                self.state != SetupState.FIRST_BOOT:
-            # capture all utterances until paired
-            # prompts from this skill are handled with get_response
-            return True
-        return False
+        if self.pairing_mode != PairingMode.GUI:
+            if self.state != SetupState.INACTIVE and \
+                self.state != SetupState.FINISHED:
+                # capture all utterances until paired
+                # prompts from this skill are handled with get_response
+                return True
+            return False
 
     @intent_handler(IntentBuilder("PairingIntent")
                     .require("pairing").require("device"))
