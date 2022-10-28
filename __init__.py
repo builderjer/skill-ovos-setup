@@ -787,11 +787,10 @@ class PairingSkill(OVOSSkill):
 
         self.gui["tts_engines"] = opts if single else plug_opts
 
-        self.handle_display_manager("TTSListMenu")
         if single:
-            self.gui.send_event("tts.list.view.change.mode", {"mode": 1})
+            self.handle_display_manager("TTSListMenuSingle")
         else:
-            self.gui.send_event("tts.list.view.change.mode", {"mode": 0})
+            self.handle_display_manager("TTSListMenuNested")
 
         self.send_stop_signal("pairing.stt.menu.stop")
         self.speak_dialog("tts.intro", wait=True)
