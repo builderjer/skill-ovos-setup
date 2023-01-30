@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/HEAD)
+
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.1...HEAD)
+
+**Merged pull requests:**
+
+- fix scaling of buttons on backend select [\#68](https://github.com/OpenVoiceOS/skill-ovos-setup/pull/68) ([AIIX](https://github.com/AIIX))
+
+## [V0.0.1](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/V0.0.1) (2023-01-25)
+
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.1a1...V0.0.1)
+
 ## [V0.0.1a1](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/V0.0.1a1) (2023-01-25)
 
 [Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/7759f8161bfc0e53bf169e200170af655d255ec0...V0.0.1a1)
