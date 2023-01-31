@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/HEAD)
 
-[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a1...HEAD)
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a2...HEAD)
+
+**Merged pull requests:**
+
+- use class property to define skill as offline [\#70](https://github.com/OpenVoiceOS/skill-ovos-setup/pull/70) ([AIIX](https://github.com/AIIX))
+
+## [V0.0.2a2](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/V0.0.2a2) (2023-01-31)
+
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a1...V0.0.2a2)
 
 **Merged pull requests:**
 
