@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/HEAD)
 
-[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.1...HEAD)
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a1...HEAD)
+
+**Merged pull requests:**
+
+- fix text overflow in list delegates [\#65](https://github.com/OpenVoiceOS/skill-ovos-setup/pull/65) ([AIIX](https://github.com/AIIX))
+
+## [V0.0.2a1](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/V0.0.2a1) (2023-01-30)
+
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.1...V0.0.2a1)
 
 **Merged pull requests:**
 
