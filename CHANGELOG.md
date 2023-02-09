@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/HEAD)
 
-[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a2...HEAD)
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a3...HEAD)
+
+**Merged pull requests:**
+
+- rename RuntimeRequirements [\#71](https://github.com/OpenVoiceOS/skill-ovos-setup/pull/71) ([JarbasAl](https://github.com/JarbasAl))
+
+## [V0.0.2a3](https://github.com/OpenVoiceOS/skill-ovos-setup/tree/V0.0.2a3) (2023-01-31)
+
+[Full Changelog](https://github.com/OpenVoiceOS/skill-ovos-setup/compare/V0.0.2a2...V0.0.2a3)
 
 **Merged pull requests:**
 
